@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import DetectionCuh from "../components/detectioncuh"
+import DetectionCuh from "../detection/components/detectioncuh";
 
 export default function DetectionPage() {
   return (
@@ -13,6 +13,6 @@ export default function DetectionPage() {
           ⬅ Back to Menu
         </a>
       </div>
-    </main
+    </main>
   );
 }
