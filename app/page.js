@@ -44,7 +44,7 @@ export default function Home() {
       </p>
 
       <Link
-        href="/menu"
+        href="/pages/login"
         style={{
           display: "inline-block",
           padding: "1rem 2rem",
