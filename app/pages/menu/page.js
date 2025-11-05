@@ -62,6 +62,7 @@ export default function MenuPage() {
           Choose an Option 🚀
         </h2>
 
+<<<<<<< HEAD
         <div className="grid gap-8 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 w-full max-w-5xl">
           {menuItems.map((item, i) => (
             <Link key={i} href={item.href}>
@@ -75,6 +76,69 @@ export default function MenuPage() {
                     {item.icon}
                   </div>
                   <h3 className="text-2xl font-semibold">{item.title}</h3>
+=======
+    const handleLogout = async () => {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' })
+            router.push('/pages/login')
+        } catch (error) {
+            console.error('Logout failed:', error)
+        }
+    }
+
+    const menuItems = [
+        {
+            title : "AI Object Detection",
+            desc : "Start detecting objects using live camera.",
+            href : "/detection",
+            color : "from-indigo-500 to-cyan-500",
+            icon : <CameraIcon className= "w-8 h-8" />
+        },
+        {
+            title : "View Recordings",
+            desc : "Browse saved detections and recorded footage.",
+            href  : "/pages/recordings",
+            color : "from-pink-500 to-orange-500",
+            icon : <PlayCircleIcon className="w-8 h-8"/>,
+
+        },
+
+        {
+            title:"View Statistics",
+            desc : "Analyze detection patterns and performance data",
+            href : "/statistics",
+            color : "from-green-500 to-teal-400",
+            icon : <ChartBarIcon className="w-8 h-8"/>,
+        },
+    ];
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-slate-900 to-black">
+                <div className="text-white text-xl">Loading...</div>
+            </div>
+        )
+    }
+
+    if (!user) {
+        return null // Will redirect to login
+    }
+
+    return (
+        <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-900 via-slate-900 to-black text-white">
+            {/* Header with user info and logout */}
+            <div className="w-full px-6 py-4 flex justify-between items-center bg-black/30 backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                    <div className="text-sm">
+                        <span className="text-gray-400">Welcome back,</span>
+                        <span className="font-semibold text-white ml-2">{user.username}</span>
+                        {user.role === 1 && (
+                            <span className="ml-2 bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-xs border border-purple-500/30">
+                                Admin
+                            </span>
+                        )}
+                    </div>
+>>>>>>> a9303d5 (saved videos)
                 </div>
                 <p className="text-sm text-gray-100/90">{item.desc}</p>
               </motion.div>

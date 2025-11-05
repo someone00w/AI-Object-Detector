@@ -9,7 +9,7 @@ export default function DetectionPage() {
       <h1 style={{ marginBottom: "1rem" }}>Detection System</h1>
       <DetectionCuh />
       <div style={{ marginTop: "1rem" }}>
-        <a href="/" style={{ color: "#06f", textDecoration: "underline" }}>
+        <a href="/pages/menu" style={{ color: "#06f", textDecoration: "underline" }}>
           ⬅ Back to Menu
         </a>
       </div>

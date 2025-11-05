@@ -197,10 +197,24 @@ const Detectioncuh = () => {
 
     drawFrame();
 
-    recorder.onstop = () => {
-      const blob = new Blob(chunks, { type: "video/webm" });
-      const url = URL.createObjectURL(blob);
+    recorder.onstop = async () => {
+  const blob = new Blob(chunks, { type: "video/webm" });
+  
+  // Create FormData to upload
+  const formData = new FormData();
+  formData.append('video', blob, 'recording.webm');
+  
+  // Optionally include detection data
+  const detectionSummary = {
+    totalDetections: currentDetectionsRef.current.length,
+    objects: currentDetectionsRef.current.map(d => ({
+      class: d.class,
+      score: d.score
+    }))
+  };
+  formData.append('detectionResult', JSON.stringify(detectionSummary));
 
+<<<<<<< HEAD
       const now = new Date();
       const dateString = `${now.getFullYear()}-${String(
         now.getMonth() + 1
@@ -210,14 +224,34 @@ const Detectioncuh = () => {
       )}_${String(now.getHours()).padStart(2, "0")};${String(
         now.getMinutes()
       ).padStart(2, "0")};${String(now.getSeconds()).padStart(2, "0")}`;
+=======
+  try {
+    const response = await fetch('/api/videos/save', {
+      method: 'POST',
+      body: formData
+    });
+>>>>>>> a9303d5 (saved videos)
 
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `person_detected_${dateString}.webm`;
-      a.click();
-      URL.revokeObjectURL(url);
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ Video saved to database:', data.video);
+      alert('Recording saved successfully!');
+    } else {
+      const errorData = await response.json();
+      console.error('Failed to save video:', response.status, errorData);
+      alert(`Failed to save recording: ${errorData.error || 'Unknown error'}`);
+    }
+  } catch (error) {
+    console.error('Upload error:', error);
+    alert('Error uploading video');
+  }
 
+<<<<<<< HEAD
       cooldownRef.current = true;
+=======
+  // Cooldown logic with countdown
+  cooldownRef.current = true;
+>>>>>>> a9303d5 (saved videos)
       let remaining = 15;
       setCooldownTime(remaining);
       const cooldownInterval = setInterval(() => {
