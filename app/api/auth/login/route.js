@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/app/lib/prisma'
 import { verifyPassword } from '@/app/lib/auth'
+import { generateToken } from '@/app/lib/jwt'
 
 export async function POST(request) {
   try {
@@ -40,13 +41,28 @@ export async function POST(request) {
     // Return user data (excluding password)
     const { password: _, ...userWithoutPassword } = user
 
-    return NextResponse.json(
+    // Generate JWT token
+    const token = generateToken(userWithoutPassword)
+
+    // Create response with token in HTTP-only cookie
+    const response = NextResponse.json(
       { 
         message: 'Login successful',
         user: userWithoutPassword
       },
       { status: 200 }
     )
+
+    // Set cookie (HTTP-only for security)
+    response.cookies.set('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7 // 7 days
+    })
+
+    return response
 
   } catch (error) {
     console.error('Login error:', error)

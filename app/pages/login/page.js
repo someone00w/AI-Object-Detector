@@ -28,7 +28,7 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -41,7 +41,7 @@ export default function LoginPage() {
         return
       }
 
-      localStorage.setItem('user', JSON.stringify(data.user))
+      // Redirect to menu on success
       router.push('/pages/menu')
     } catch (err) {
       setError('An error occurred. Please try again.')
@@ -59,7 +59,7 @@ export default function LoginPage() {
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Don't have an account?{' '}
-            <Link href="/pages/register" className="text-blue-600 hover:text-blue-500">
+            <Link href="/register" className="text-blue-600 hover:text-blue-500">
               Sign up
             </Link>
           </p>

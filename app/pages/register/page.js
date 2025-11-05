@@ -21,7 +21,7 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/register', {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -34,7 +34,7 @@ export default function RegisterPage() {
         return
       }
 
-      router.push('/login?registered=true')
+      router.push('/pages/login?registered=true')
     } catch (err) {
       setError('An error occurred. Please try again.')
     } finally {
