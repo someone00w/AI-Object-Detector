@@ -7,7 +7,6 @@ import * as tf from "@tensorflow/tfjs";
 import { renderPredictions } from "@/utils/render-predictions";
 import { motion } from "framer-motion";
 
-// ...existing code...
 let detectInterval;
 
 const Detectioncuh = () => {
@@ -20,37 +19,38 @@ const Detectioncuh = () => {
   // Recording flags and trackers
   const isRecordingRef = useRef(false);
   const cooldownRef = useRef(false);
+  const emailCooldownRef = useRef(false); // Separate cooldown for email
   const currentDetectionsRef = useRef([]);
   const lastPersonSeenRef = useRef(null);
   const noPersonTimeoutRef = useRef(null);
   const recorderRef = useRef(null);
 
-  // 👇 For now, change this to test different emails from the frontend
-  const TEST_ALERT_EMAIL = "shafirizeini@gmail.com";
+  // 👇 CHANGE THIS EMAIL to where you want alerts sent
+  const ALERT_EMAIL = "shafirizeini@gmail.com";
 
   useEffect(() => {
     runCoco();
     return () => clearInterval(detectInterval);
   }, []);
 
-  // Email helper (replaces Twilio)
-  const sendEmailNotification = async (toEmail) => {
+  // Email notification helper
+  const sendEmailNotification = async () => {
     try {
-      console.log("Sending alert email to:", toEmail);
+      console.log("📧 Sending alert email to:", ALERT_EMAIL);
 
       const res = await fetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          to: toEmail,
+          to: ALERT_EMAIL,
           subject: "🚨 Person detected by your AI camera",
-          text: "Your AI detection system just detected a person.",
+          text: `Your AI detection system just detected a person at ${new Date().toLocaleString()}.`,
         }),
       });
 
       const data = await res.json();
       if (data.success) {
-        console.log("📩 Email sent successfully!");
+        console.log("✅ Email sent successfully!");
       } else {
         console.error("❌ Email failed:", data.error);
       }
@@ -86,19 +86,21 @@ const Detectioncuh = () => {
       const context = canvas.getContext("2d");
       renderPredictions(detectedObjects, context);
 
-      const personDetected = detectedObjects.some(
-        (obj) => obj.class === "person"
-      );
+      const personDetected = detectedObjects.some((obj) => obj.class === "person");
 
       if (personDetected && !isRecordingRef.current && !cooldownRef.current) {
         startRecording(net);
 
-        // Email notification with cooldown
-        cooldownRef.current = true;
-        sendEmailNotification(TEST_ALERT_EMAIL);
-        setTimeout(() => {
-          cooldownRef.current = false;
-        }, 15000);
+        // Send email notification with separate cooldown
+        if (!emailCooldownRef.current) {
+          emailCooldownRef.current = true;
+          sendEmailNotification();
+          
+          // Email cooldown (15 seconds)
+          setTimeout(() => {
+            emailCooldownRef.current = false;
+          }, 15000);
+        }
       }
 
       if (isRecordingRef.current) {
@@ -142,6 +144,7 @@ const Detectioncuh = () => {
       if (e.data.size > 0) chunks.push(e.data);
     };
 
+    // HUD icons
     const icons = {
       person: "👤",
       dog: "🐶",
@@ -163,26 +166,30 @@ const Detectioncuh = () => {
           const [x, y, width, height] = prediction.bbox;
           const isPerson = prediction.class === "person";
 
+          // Bounding box
           recordCtx.strokeStyle = isPerson ? "#FF0000" : "#00FFFF";
           recordCtx.lineWidth = 4;
           recordCtx.strokeRect(x, y, width, height);
 
+          // Fill inside box
           recordCtx.fillStyle = `rgba(255, 0, 0, ${isPerson ? 0.2 : 0})`;
           recordCtx.fillRect(x, y, width, height);
 
+          // Label with icon + confidence
           const icon = icons[prediction.class] || "";
-          const label = `${icon} ${prediction.class} ${(prediction.score * 100).toFixed(
-            1
-          )}%`;
+          const label = `${icon} ${prediction.class} ${(prediction.score * 100).toFixed(1)}%`;
           const textWidth = recordCtx.measureText(label).width;
           const textHeight = 16;
 
+          // Label background
           recordCtx.fillStyle = isPerson ? "#FF0000" : "#00FFFF";
           recordCtx.fillRect(x, y, textWidth + 6, textHeight + 6);
 
+          // Label text
           recordCtx.fillStyle = "#000000";
           recordCtx.fillText(label, x + 3, y + 3);
 
+          // Confidence bar below box
           const barWidth = width * prediction.score;
           const barHeight = 4;
           recordCtx.fillStyle = isPerson ? "#FF5555" : "#55FFFF";
@@ -198,60 +205,44 @@ const Detectioncuh = () => {
     drawFrame();
 
     recorder.onstop = async () => {
-  const blob = new Blob(chunks, { type: "video/webm" });
-  
-  // Create FormData to upload
-  const formData = new FormData();
-  formData.append('video', blob, 'recording.webm');
-  
-  // Optionally include detection data
-  const detectionSummary = {
-    totalDetections: currentDetectionsRef.current.length,
-    objects: currentDetectionsRef.current.map(d => ({
-      class: d.class,
-      score: d.score
-    }))
-  };
-  formData.append('detectionResult', JSON.stringify(detectionSummary));
+      const blob = new Blob(chunks, { type: "video/webm" });
+      
+      // Create FormData to upload
+      const formData = new FormData();
+      formData.append('video', blob, 'recording.webm');
+      
+      // Optionally include detection data
+      const detectionSummary = {
+        totalDetections: currentDetectionsRef.current.length,
+        objects: currentDetectionsRef.current.map(d => ({
+          class: d.class,
+          score: d.score
+        }))
+      };
+      formData.append('detectionResult', JSON.stringify(detectionSummary));
 
-<<<<<<< HEAD
-      const now = new Date();
-      const dateString = `${now.getFullYear()}-${String(
-        now.getMonth() + 1
-      ).padStart(2, "0")}-${String(now.getDate()).padStart(
-        2,
-        "0"
-      )}_${String(now.getHours()).padStart(2, "0")};${String(
-        now.getMinutes()
-      ).padStart(2, "0")};${String(now.getSeconds()).padStart(2, "0")}`;
-=======
-  try {
-    const response = await fetch('/api/videos/save', {
-      method: 'POST',
-      body: formData
-    });
->>>>>>> a9303d5 (saved videos)
+      try {
+        const response = await fetch('/api/videos/save', {
+          method: 'POST',
+          body: formData
+        });
 
-    if (response.ok) {
-      const data = await response.json();
-      console.log('✅ Video saved to database:', data.video);
-      alert('Recording saved successfully!');
-    } else {
-      const errorData = await response.json();
-      console.error('Failed to save video:', response.status, errorData);
-      alert(`Failed to save recording: ${errorData.error || 'Unknown error'}`);
-    }
-  } catch (error) {
-    console.error('Upload error:', error);
-    alert('Error uploading video');
-  }
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Video saved to database:', data.video);
+          alert('Recording saved successfully!');
+        } else {
+          const errorData = await response.json();
+          console.error('Failed to save video:', response.status, errorData);
+          alert(`Failed to save recording: ${errorData.error || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        alert('Error uploading video');
+      }
 
-<<<<<<< HEAD
+      // Cooldown logic with countdown
       cooldownRef.current = true;
-=======
-  // Cooldown logic with countdown
-  cooldownRef.current = true;
->>>>>>> a9303d5 (saved videos)
       let remaining = 15;
       setCooldownTime(remaining);
       const cooldownInterval = setInterval(() => {
@@ -280,9 +271,12 @@ const Detectioncuh = () => {
     }
   }
 
-  // JSX
   return (
-    <>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-linear-to-br from-gray-900 via-black to-slate-950 p-8">
+      <h1 className="text-3xl font-bold mb-6 text-transparent bg-clip-text bg-linear-to-r from-cyan-400 to-blue-600 drop-shadow-md">
+        AI Object Detection
+      </h1>
+
       {isLoading ? (
         <motion.div
           className="flex flex-col items-center justify-center text-center text-gray-200"
@@ -296,28 +290,28 @@ const Detectioncuh = () => {
         </motion.div>
       ) : (
         <motion.div
-          className="relative w-full max-w-4xl mx-auto aspect-video border border-cyan-500/40 rounded-2xl overflow-hidden shadow-[0_0_25px_rgba(0,255,255,0.2)] hover:shadow-[0_0_45px_rgba(0,255,255,0.4)] transition-all duration-300 bg-black/80"
+          className="relative flex justify-center items-center border border-cyan-500/40 rounded-2xl p-2 shadow-[0_0_25px_rgba(0,255,255,0.2)] hover:shadow-[0_0_45px_rgba(0,255,255,0.4)] transition-all duration-300"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
           <Webcam
             ref={webcamRef}
-            className="absolute inset-0 h-full w-full object-cover"
+            className="rounded-xl w-full lg:h-[720px] object-cover"
             muted
           />
           <canvas
             ref={canvasRef}
-            className="absolute inset-0 h-full w-full z-50"
+            className="absolute top-0 left-0 z-50 rounded-xl w-full lg:h-[720px]"
           />
         </motion.div>
       )}
 
       {cooldownTime > 0 && (
-        <div className="text-red-500 font-semibold mt-4 text-center">
+        <div className="text-red-500 font-semibold mt-4">
           Cooldown: {cooldownTime}s
         </div>
       )}
-    </>
+    </div>
   );
 };
 
