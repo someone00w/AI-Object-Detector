@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  username   String   @unique @db.VarChar(50)
+  email      String   @unique @db.VarChar(100)
+  password   String   @db.VarChar(255)
+  full_name  String?  @db.VarChar(100)
+  role       Int      @default(2)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  videos     Video[]  // Relation to videos
+
+  @@map("users")
+}
+
+model Video {
+  id               Int      @id @default(autoincrement())
+  user_id          Int
+  video_name       String   @db.VarChar(255)
+  file_path        String   @db.VarChar(255)
+  capture_time     DateTime
+  file_size_mb     Decimal? @db.Decimal(10, 2)
+  detection_result Json?
+  uploaded_at      DateTime @default(now())
+  
+  user             User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("videos")
+}
