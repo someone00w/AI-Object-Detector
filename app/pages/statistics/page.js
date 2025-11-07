@@ -125,8 +125,13 @@ export default function StatisticsPage() {
                   className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-900/80 hover:text-emerald-300 rounded-t-xl transition-colors"
                   onClick={() => {
                     setMenuOpen(false);
+<<<<<<< HEAD:app/statistics/page.js
                     // ⬇️ change "/menu" to your actual main menu route
                     router.push("/menu");
+=======
+                    // ⬇️ change "/menu" to your actual menu route
+                    router.push("/pages/menu");
+>>>>>>> cc63dda02c3b17f9af955e5472babc57c9843279:app/pages/statistics/page.js
                   }}
                 >
                   ⬅ Back to main menu

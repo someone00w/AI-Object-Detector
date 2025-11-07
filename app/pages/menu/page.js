@@ -70,10 +70,10 @@ export default function MenuPage() {
     },
     {
       title: "View Statistics",
-      desc: "Check your usage metrics and performance stats.",
+      desc: "Analyze detection patterns and performance data.",
       href: "/statistics",
-      color: "from-sky-400 to-violet-500",
-      icon: <ChartBarIcon className="w-6 h-6" />,
+      color: "from-green-500 to-teal-400",
+      icon: <ChartBarIcon className="w-8 h-8" />,
     },
   ];
 

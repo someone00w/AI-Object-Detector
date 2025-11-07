@@ -257,7 +257,7 @@ export default function RecordingsPage() {
 
                   <a
                     href={video.file_path}
-                    download
+                    download={video.video_name.endsWith('.webm') ? video.video_name : `${video.video_name}.webm`}
                     className="mt-4 block w-full text-center py-2 bg-cyan-500 hover:bg-cyan-600 rounded transition"
                   >
                     Download

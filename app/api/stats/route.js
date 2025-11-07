@@ -1,27 +1,45 @@
-// app/api/stats/route.js
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
+import { verifyToken } from "@/app/lib/jwt";
 
-export async function GET() {
+export async function GET(request) {
   try {
-    // Basic counts
-    const [totalUsers, totalVideos, storageAgg, recentVideos] = await Promise.all([
-      prisma.user.count(),   // ✅ matches `model User`
-      prisma.video.count(),  // ✅ matches `model Video`
+    // Verify authentication to get current user
+    const token = request.cookies.get('token')?.value
+    let currentUserId = null
+    
+    if (token) {
+      const user = verifyToken(token)
+      if (user) {
+        currentUserId = user.id
+      }
+    }
+
+    // Basic counts (keep global for now as per your request)
+    const [totalUsers, totalVideos, storageAgg] = await Promise.all([
+      prisma.user.count(),
+      prisma.video.count(),
       prisma.video.aggregate({
         _sum: { file_size_mb: true },
       }),
-      prisma.video.findMany({
-        orderBy: { capture_time: "desc" },
-        take: 5,
-        select: {
-          id: true,
-          video_name: true,
-          capture_time: true,
-          file_size_mb: true,
-        },
-      }),
     ]);
+
+    // Get recent videos for CURRENT USER ONLY
+    const recentVideos = currentUserId 
+      ? await prisma.video.findMany({
+          where: {
+            user_id: currentUserId
+          },
+          orderBy: { capture_time: "desc" },
+          take: 5,
+          select: {
+            id: true,
+            video_name: true,
+            capture_time: true,
+            file_size_mb: true,
+          },
+        })
+      : [];
 
     // Prisma Decimal → JS number
     const totalStorageMb = storageAgg._sum.file_size_mb
@@ -45,10 +63,6 @@ export async function GET() {
 
       if (!det) continue;
 
-      // 🔧 Adjust this to match your actual detection_result shape.
-      // Example assumptions:
-      // detection_result = [{ label: "person", score: 0.9 }, ...]
-      // or detection_result = { detections: [...] }
       const detectionsArray = Array.isArray(det)
         ? det
         : Array.isArray(det?.detections)
