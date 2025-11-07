@@ -71,7 +71,7 @@ export default function MenuPage() {
     {
       title: "View Statistics",
       desc: "Analyze detection patterns and performance data.",
-      href: "/statistics",
+      href: "/pages/statistics",
       color: "from-green-500 to-teal-400",
       icon: <ChartBarIcon className="w-8 h-8" />,
     },
