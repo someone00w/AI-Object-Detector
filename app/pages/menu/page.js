@@ -10,6 +10,7 @@ import {
   PlayCircleIcon,
   ChartBarIcon,
   ArrowRightOnRectangleIcon,
+  KeyIcon,
 } from "@heroicons/react/24/outline";
 
 export default function MenuPage() {
@@ -85,7 +86,7 @@ export default function MenuPage() {
             desc: "Manage users, roles, and system settings.",
             href: "/pages/admin",
             color: "from-purple-500 to-fuchsia-500",
-            icon: <ChartBarIcon className="w-6 h-6" />,
+            icon: <KeyIcon className="w-6 h-6" />,
           },
         ]
       : [];
