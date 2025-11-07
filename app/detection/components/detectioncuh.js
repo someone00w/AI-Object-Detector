@@ -14,6 +14,8 @@ const Detectioncuh = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [cooldownTime, setCooldownTime] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
+  const [userEmail, setUserEmail] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(true);
 
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
@@ -21,34 +23,64 @@ const Detectioncuh = () => {
   // Recording flags and trackers
   const isRecordingRef = useRef(false);
   const cooldownRef = useRef(false);
-  const emailCooldownRef = useRef(false); // Email cooldown
+  const emailCooldownRef = useRef(false);
   const currentDetectionsRef = useRef([]);
   const lastPersonSeenRef = useRef(null);
   const noPersonTimeoutRef = useRef(null);
   const recorderRef = useRef(null);
 
-  // 👇 CHANGE THIS EMAIL to where you want alerts sent
-  const ALERT_EMAIL = "shafirizeini@gmail.com";
+  // Get user session on component mount
+  useEffect(() => {
+    fetchUserSession();
+  }, []);
 
   useEffect(() => {
-    runCoco();
+    if (userEmail) {
+      runCoco();
+    }
     return () => {
       if (detectInterval) clearInterval(detectInterval);
       stopRecording();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [userEmail]);
 
-  // Email notification helper
-  const sendEmailNotification = async () => {
+  // Fetch logged-in user's email from session
+  const fetchUserSession = async () => {
     try {
-      console.log("📧 Sending alert email to:", ALERT_EMAIL);
+      const response = await fetch('/api/auth/session');
+      
+      if (response.ok) {
+        const data = await response.json();
+        setUserEmail(data.user.email);
+        console.log('📧 Alerts will be sent to:', data.user.email);
+      } else {
+        console.error('No user session found');
+        // Optionally redirect to login
+        // window.location.href = '/pages/login';
+      }
+    } catch (error) {
+      console.error('Failed to fetch user session:', error);
+    } finally {
+      setLoadingUser(false);
+    }
+  };
+
+  // Email notification helper - now uses logged-in user's email
+  const sendEmailNotification = async () => {
+    if (!userEmail) {
+      console.log('⚠️ No user email available, skipping notification');
+      return;
+    }
+
+    try {
+      console.log("📧 Sending alert email to:", userEmail);
 
       const res = await fetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          to: ALERT_EMAIL,
+          to: userEmail,
           subject: "🚨 Person detected by your AI camera",
           text: `Your AI detection system just detected a person at ${new Date().toLocaleString()}.`,
         }),
@@ -85,7 +117,6 @@ const Detectioncuh = () => {
 
     const video = webcamRef.current.video;
 
-    // ✅ Fix: skip if video size is 0
     if (!video.videoWidth || !video.videoHeight) return;
 
     const canvas = canvasRef.current;
@@ -109,7 +140,6 @@ const Detectioncuh = () => {
         emailCooldownRef.current = true;
         sendEmailNotification();
 
-        // Email cooldown (15s)
         setTimeout(() => {
           emailCooldownRef.current = false;
         }, 15000);
@@ -273,12 +303,21 @@ const Detectioncuh = () => {
     }
   }
 
+  // Show loading while fetching user
+  if (loadingUser) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-white text-xl">Loading user session...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 relative overflow-hidden">
       {/* Background */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_#1e293b,_#020617_80%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e293b,#020617_80%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(to_bottom_right,rgba(16,185,129,0.12),rgba(56,189,248,0.12))]" />
-      <div className="absolute inset-0 opacity-[0.05] [background-image:linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] [background-size:60px_60px]" />
+      <div className="absolute inset-0 opacity-[0.05] bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-size-[60px_60px]" />
 
       {/* Content */}
       <div className="relative z-10 flex flex-col min-h-screen px-4 sm:px-6 py-6">
@@ -312,7 +351,6 @@ const Detectioncuh = () => {
               </div>
             )}
 
-            {/* Only this header Back to Menu remains */}
             <Link href="/pages/menu">
               <motion.button
                 whileHover={{ scale: 1.05, y: -1 }}
@@ -334,7 +372,7 @@ const Detectioncuh = () => {
               AI Object Detection
             </h1>
             {isLoading ? (
-              <motion.div className="flex flex-col items-center justify-center text-center text-slate-200 h-[320px] w-full rounded-2xl border border-slate-800 bg-slate-950/70 backdrop-blur-xl">
+              <motion.div className="flex flex-col items-center justify-center text-center text-slate-200 h-80 w-full rounded-2xl border border-slate-800 bg-slate-950/70 backdrop-blur-xl">
                 <div className="animate-spin rounded-full h-14 w-14 border-t-4 border-emerald-400 border-opacity-80 mb-4" />
                 <p className="text-lg font-medium text-emerald-300">
                   Loading AI model...
@@ -371,9 +409,11 @@ const Detectioncuh = () => {
                   <span>Trigger</span>
                   <span className="text-slate-200">Person detected</span>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1">
                   <span>Email Alerts</span>
-                  <span className="text-slate-200 truncate">{ALERT_EMAIL}</span>
+                  <span className="text-slate-200 text-[11px] break-all">
+                    {userEmail || 'Loading...'}
+                  </span>
                 </div>
               </div>
 
