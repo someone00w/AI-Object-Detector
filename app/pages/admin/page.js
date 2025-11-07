@@ -82,7 +82,7 @@ export default function AdminPage() {
 
   if (loading || loadingUsers) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-slate-900 to-black">
+      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-gray-900 via-slate-900 to-black">
         <div className="text-white text-xl">Loading...</div>
       </div>
     )
@@ -91,7 +91,7 @@ export default function AdminPage() {
   if (!user) return null
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-black text-white">
+    <div className="min-h-screen bg-linear-to-br from-gray-900 via-slate-900 to-black text-white">
       {/* Header */}
       <div className="w-full px-6 py-4 bg-black/30 backdrop-blur-sm border-b border-white/10">
         <div className="max-w-7xl mx-auto flex items-center justify-between">

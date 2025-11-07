@@ -100,7 +100,7 @@ export default function StatisticsPage() {
                   onClick={() => {
                     setMenuOpen(false);
                     // ⬇️ change "/menu" to your actual menu route
-                    router.push("/menu");
+                    router.push("/pages/menu");
                   }}
                 >
                   ⬅ Back to main menu
