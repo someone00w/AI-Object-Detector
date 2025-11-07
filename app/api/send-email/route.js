@@ -14,7 +14,7 @@ export async function POST(req) {
       },
     });
 
-    const toEmail = to || process.env.ALERT_EMAIL_TO;
+    const toEmail = to || process.env.ALERT_EMAIL_FROM;
 
     const info = await transporter.sendMail({
       from: process.env.ALERT_EMAIL_FROM,
