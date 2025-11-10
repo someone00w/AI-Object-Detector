@@ -76,7 +76,7 @@ export default function StatisticsPage() {
       : "High object density";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 text-slate-100 px-4 py-8">
+    <div className="min-h-screen bg-linear-to-b from-slate-950 via-slate-950 to-slate-900 text-slate-100 px-4 py-8">
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -125,8 +125,13 @@ export default function StatisticsPage() {
                   className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-900/80 hover:text-emerald-300 rounded-t-xl transition-colors"
                   onClick={() => {
                     setMenuOpen(false);
-// Navigate to menu page
-router.push("/pages/menu");
+<<<<<<< HEAD:app/statistics/page.js
+                    // ⬇️ change "/menu" to your actual main menu route
+                    router.push("/menu");
+=======
+                    // ⬇️ change "/menu" to your actual menu route
+                    router.push("/pages/menu");
+>>>>>>> cc63dda02c3b17f9af955e5472babc57c9843279:app/pages/statistics/page.js
                   }}
                 >
                   ⬅ Back to main menu
@@ -219,7 +224,7 @@ router.push("/pages/menu");
               </p>
               <div className="mt-4 h-2 w-full rounded-full bg-slate-800 overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-emerald-400 to-lime-300"
+                  className="h-full bg-linear-to-r from-emerald-400 to-lime-300"
                   style={{
                     width: `${
                       Math.max(
@@ -298,7 +303,7 @@ function StatCard({ label, value, helper }) {
         <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500 mb-1">
           {label}
         </p>
-        <p className="text-2xl font-semibold break-words">{value}</p>
+        <p className="text-2xl font-semibold wrap-break-word">{value}</p>
       </div>
       {helper && (
         <p className="text-[11px] text-slate-500 mt-2">{helper}</p>

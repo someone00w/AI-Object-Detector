@@ -10,6 +10,7 @@ import {
   PlayCircleIcon,
   ChartBarIcon,
   ArrowRightOnRectangleIcon,
+  KeyIcon,
 } from "@heroicons/react/24/outline";
 
 export default function MenuPage() {
@@ -71,7 +72,7 @@ export default function MenuPage() {
     {
       title: "View Statistics",
       desc: "Analyze detection patterns and performance data.",
-      href: "/statistics",
+      href: "/pages/statistics",
       color: "from-green-500 to-teal-400",
       icon: <ChartBarIcon className="w-8 h-8" />,
     },
@@ -85,7 +86,7 @@ export default function MenuPage() {
             desc: "Manage users, roles, and system settings.",
             href: "/pages/admin",
             color: "from-purple-500 to-fuchsia-500",
-            icon: <ChartBarIcon className="w-6 h-6" />,
+            icon: <KeyIcon className="w-6 h-6" />,
           },
         ]
       : [];
@@ -96,9 +97,9 @@ export default function MenuPage() {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 relative overflow-hidden flex items-center justify-center">
         {/* Background */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_#1e293b,_#020617_80%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e293b,#020617_80%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(to_bottom_right,rgba(16,185,129,0.12),rgba(56,189,248,0.12))]" />
-        <div className="absolute inset-0 opacity-[0.05] [background-image:linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] [background-size:60px_60px]" />
+        <div className="absolute inset-0 opacity-[0.05] bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-size-[60px_60px]" />
 
         <div className="relative z-10 flex flex-col items-center gap-3">
           <span className="h-4 w-4 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin" />
@@ -115,11 +116,11 @@ export default function MenuPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 relative overflow-hidden">
       {/* Background layers (same vibe as home/login/register) */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_#1e293b,_#020617_80%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e293b,#020617_80%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(to_bottom_right,rgba(16,185,129,0.12),rgba(56,189,248,0.12))]" />
-      <div className="absolute inset-0 opacity-[0.05] [background-image:linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] [background-size:60px_60px]" />
+      <div className="absolute inset-0 opacity-[0.05] bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-size-[60px_60px]" />
       <div className="absolute top-[8%] left-[10%] w-[260px] h-[260px] bg-emerald-400/12 rounded-full blur-[150px]" />
-      <div className="absolute bottom-[10%] right-[12%] w-[320px] h-[320px] bg-sky-400/12 rounded-full blur-[160px]" />
+      <div className="absolute bottom-[10%] right-[12%] w-[320px] h-80 bg-sky-400/12 rounded-full blur-[160px]" />
 
       {/* Content */}
       <div className="relative z-10 flex flex-col min-h-screen">
@@ -139,7 +140,7 @@ export default function MenuPage() {
                   {user.username}
                 </span>
                 {user.role === 1 && (
-                  <span className="ml-2 inline-flex items-center rounded-full border border-purple-400/40 bg-purple-500/10 px-2 py-[2px] text-[10px] text-purple-200">
+                  <span className="ml-2 inline-flex items-center rounded-full border border-purple-400/40 bg-purple-500/10 px-2 py-0.5 text-[10px] text-purple-200">
                     Admin
                   </span>
                 )}
@@ -181,12 +182,12 @@ export default function MenuPage() {
                   >
                     {/* Top accent bar */}
                     <div
-                      className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${item.color}`}
+                      className={`absolute inset-x-0 top-0 h-1 bg-linear-to-r ${item.color}`}
                     />
 
                     <div className="flex items-center gap-3 mb-4">
                       <div
-                        className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${item.color} text-white shadow-[0_0_18px_rgba(56,189,248,0.5)]`}
+                        className={`flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br ${item.color} text-white shadow-[0_0_18px_rgba(56,189,248,0.5)]`}
                       >
                         {item.icon}
                       </div>
