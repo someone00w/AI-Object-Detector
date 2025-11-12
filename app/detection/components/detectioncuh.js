@@ -10,6 +10,25 @@ import Link from "next/link";
 
 let detectInterval;
 
+const IOU_THRESHOLD = 0.3;     // match threshold for same person
+const TRACK_STALE_MS = 1000;   // drop track if unseen for > 1s
+const NO_PERSON_STOP_MS = 3000; // stop recording after 3s of no person
+
+function iou(a, b) {
+  // a, b: [x, y, w, h]
+  const ax2 = a[0] + a[2], ay2 = a[1] + a[3];
+  const bx2 = b[0] + b[2], by2 = b[1] + b[3];
+  const x1 = Math.max(a[0], b[0]);
+  const y1 = Math.max(a[1], b[1]);
+  const x2 = Math.min(ax2, bx2);
+  const y2 = Math.min(ay2, by2);
+  const inter = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+  const areaA = a[2] * a[3];
+  const areaB = b[2] * b[3];
+  const union = areaA + areaB - inter;
+  return union > 0 ? inter / union : 0;
+}
+
 const Detectioncuh = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [cooldownTime, setCooldownTime] = useState(0);
@@ -28,6 +47,27 @@ const Detectioncuh = () => {
   const lastPersonSeenRef = useRef(null);
   const noPersonTimeoutRef = useRef(null);
   const recorderRef = useRef(null);
+
+  // Aggregated per-recording stats (episodes + tracking)
+  const recordingStatsRef = useRef(null);
+  /*
+    {
+      startedAt, lastFrameTs,
+      classesSeen: Set<string>,
+      perClassCounts: Map<class, frames>,
+      person: {
+        present: boolean,
+        episodes: [{start,end?}],
+        totalMs: number,
+        maxScore: number
+      },
+      tracking: {
+        nextId: number,
+        tracks: Map<id, { id, bbox, lastSeenTs, firstSeenTs, maxScore }>,
+        seenIds: Set<number>
+      }
+    }
+  */
 
   // Get user session on component mount
   useEffect(() => {
@@ -49,15 +89,12 @@ const Detectioncuh = () => {
   const fetchUserSession = async () => {
     try {
       const response = await fetch('/api/auth/session');
-      
       if (response.ok) {
         const data = await response.json();
-        setUserEmail(data.user.email);
-        console.log('📧 Alerts will be sent to:', data.user.email);
+        setUserEmail(data?.user?.email || null);
+        console.log('📧 Alerts will be sent to:', data?.user?.email);
       } else {
         console.error('No user session found');
-        // Optionally redirect to login
-        // window.location.href = '/pages/login';
       }
     } catch (error) {
       console.error('Failed to fetch user session:', error);
@@ -66,16 +103,14 @@ const Detectioncuh = () => {
     }
   };
 
-  // Email notification helper - now uses logged-in user's email
+  // Email notification helper
   const sendEmailNotification = async () => {
     if (!userEmail) {
       console.log('⚠️ No user email available, skipping notification');
       return;
     }
-
     try {
       console.log("📧 Sending alert email to:", userEmail);
-
       const res = await fetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -85,7 +120,6 @@ const Detectioncuh = () => {
           text: `Your AI detection system just detected a person at ${new Date().toLocaleString()}.`,
         }),
       });
-
       const data = await res.json();
       if (data.success) console.log("✅ Email sent successfully!");
       else console.error("❌ Email failed:", data.error);
@@ -116,7 +150,6 @@ const Detectioncuh = () => {
     }
 
     const video = webcamRef.current.video;
-
     if (!video.videoWidth || !video.videoHeight) return;
 
     const canvas = canvasRef.current;
@@ -129,9 +162,7 @@ const Detectioncuh = () => {
     const context = canvas.getContext("2d");
     renderPredictions(detectedObjects, context);
 
-    const personDetected = detectedObjects.some(
-      (obj) => obj.class === "person"
-    );
+    const personDetected = detectedObjects.some((obj) => obj.class === "person");
 
     if (personDetected && !isRecordingRef.current && !cooldownRef.current) {
       startRecording(net);
@@ -139,7 +170,6 @@ const Detectioncuh = () => {
       if (!emailCooldownRef.current) {
         emailCooldownRef.current = true;
         sendEmailNotification();
-
         setTimeout(() => {
           emailCooldownRef.current = false;
         }, 15000);
@@ -156,7 +186,7 @@ const Detectioncuh = () => {
       } else if (!noPersonTimeoutRef.current) {
         noPersonTimeoutRef.current = setTimeout(() => {
           stopRecording();
-        }, 3000);
+        }, NO_PERSON_STOP_MS);
       }
     }
   }
@@ -170,6 +200,26 @@ const Detectioncuh = () => {
     isRecordingRef.current = true;
     setIsRecording(true);
     lastPersonSeenRef.current = Date.now();
+
+    // Initialize per-recording stats
+    const now = performance.now();
+    recordingStatsRef.current = {
+      startedAt: now,
+      lastFrameTs: now,
+      classesSeen: new Set(),
+      perClassCounts: new Map(),
+      person: {
+        present: false,
+        episodes: [],
+        totalMs: 0,
+        maxScore: 0
+      },
+      tracking: {
+        nextId: 1,
+        tracks: new Map(),
+        seenIds: new Set()
+      }
+    };
 
     const recordCanvas = document.createElement("canvas");
     recordCanvas.width = video.videoWidth;
@@ -202,12 +252,127 @@ const Detectioncuh = () => {
 
       try {
         const detectedObjects = await net.detect(video, undefined, 0.6);
+
+        // ====== STATS AGGREGATION (episodes + per-class) ======
+        const ts = performance.now();
+        const stats = recordingStatsRef.current;
+        if (stats) {
+          const classesThisFrame = new Set(detectedObjects.map(o => o.class));
+          classesThisFrame.forEach(c => stats.classesSeen.add(c));
+          detectedObjects.forEach(o => {
+            stats.perClassCounts.set(o.class, (stats.perClassCounts.get(o.class) || 0) + 1);
+          });
+
+          const personObjs = detectedObjects.filter(o => o.class === "person");
+          const personNow = personObjs.length > 0;
+          const bestScore = personObjs.reduce((m, o) => Math.max(m, o.score || 0), 0);
+          const dt = Math.max(0, ts - stats.lastFrameTs);
+
+          if (stats.person.present) {
+            stats.person.totalMs += dt;
+          }
+          if (personNow && !stats.person.present) {
+            stats.person.present = true;
+            stats.person.episodes.push({ start: ts });
+          } else if (!personNow && stats.person.present) {
+            stats.person.present = false;
+            const ep = stats.person.episodes[stats.person.episodes.length - 1];
+            if (ep && !ep.end) ep.end = ts;
+          }
+          if (bestScore > stats.person.maxScore) stats.person.maxScore = bestScore;
+          stats.lastFrameTs = ts;
+        }
+
+        // ====== LIGHTWEIGHT MULTI-PERSON TRACKING ======
+        if (recordingStatsRef.current) {
+          const tr = recordingStatsRef.current.tracking;
+          const tsNow = performance.now();
+
+          const tracksArr = Array.from(tr.tracks.values());
+          const personDetIdxs = [];
+          detectedObjects.forEach((o, idx) => { if (o.class === "person") personDetIdxs.push(idx); });
+
+          const matches = [];
+          for (const t of tracksArr) {
+            let bestIdx = -1;
+            let bestIou = 0;
+            for (const idx of personDetIdxs) {
+              const det = detectedObjects[idx];
+              const i = iou(t.bbox, det.bbox);
+              if (i > bestIou) {
+                bestIou = i;
+                bestIdx = idx;
+              }
+            }
+            if (bestIdx >= 0 && bestIou >= IOU_THRESHOLD) {
+              matches.push({ trackId: t.id, detIdx: bestIdx, iou: bestIou });
+            }
+          }
+
+          const chosenDet = new Set();
+          const chosenTrack = new Set();
+          const finalMatches = [];
+          matches
+            .sort((a, b) => b.iou - a.iou)
+            .forEach(m => {
+              if (!chosenDet.has(m.detIdx) && !chosenTrack.has(m.trackId)) {
+                chosenDet.add(m.detIdx);
+                chosenTrack.add(m.trackId);
+                finalMatches.push(m);
+              }
+            });
+
+          finalMatches.forEach(({ trackId, detIdx }) => {
+            const det = detectedObjects[detIdx];
+            const t = tr.tracks.get(trackId);
+            if (t) {
+              t.bbox = det.bbox;
+              t.lastSeenTs = tsNow;
+              t.maxScore = Math.max(t.maxScore, det.score || 0);
+              tr.tracks.set(trackId, t);
+            }
+          });
+
+          personDetIdxs
+            .filter(idx => !chosenDet.has(idx))
+            .forEach(idx => {
+              const det = detectedObjects[idx];
+              const id = tr.nextId++;
+              tr.tracks.set(id, {
+                id,
+                bbox: det.bbox,
+                lastSeenTs: tsNow,
+                firstSeenTs: tsNow,
+                maxScore: det.score || 0
+              });
+              tr.seenIds.add(id);
+            });
+
+          for (const [id, t] of tr.tracks) {
+            if (tsNow - t.lastSeenTs > TRACK_STALE_MS) {
+              tr.tracks.delete(id);
+            }
+          }
+        }
+
+        // ====== DRAW OVERLAYS ======
         recordCtx.font = "16px system-ui, sans-serif";
         recordCtx.textBaseline = "top";
+
+        const tracksNow = recordingStatsRef.current?.tracking?.tracks || new Map();
+        const findTrackIdForBbox = (bbox) => {
+          let bestId = null, best = 0;
+          for (const t of tracksNow.values()) {
+            const i = iou(t.bbox, bbox);
+            if (i > best) { best = i; bestId = t.id; }
+          }
+          return (best >= IOU_THRESHOLD) ? bestId : null;
+        };
 
         detectedObjects.forEach((prediction) => {
           const [x, y, width, height] = prediction.bbox;
           const isPerson = prediction.class === "person";
+          const trackId = isPerson ? findTrackIdForBbox(prediction.bbox) : null;
 
           recordCtx.strokeStyle = isPerson ? "#FF0000" : "#00FFFF";
           recordCtx.lineWidth = 4;
@@ -217,7 +382,8 @@ const Detectioncuh = () => {
           recordCtx.fillRect(x, y, width, height);
 
           const icon = icons[prediction.class] || "";
-          const label = `${icon} ${prediction.class} ${(prediction.score * 100).toFixed(1)}%`;
+          const extra = isPerson && trackId ? ` #${trackId}` : "";
+          const label = `${icon} ${prediction.class}${extra} ${(prediction.score * 100).toFixed(1)}%`;
           const textWidth = recordCtx.measureText(label).width;
 
           recordCtx.fillStyle = isPerson ? "#FF0000" : "#00FFFF";
@@ -241,16 +407,62 @@ const Detectioncuh = () => {
     recorder.onstop = async () => {
       const blob = new Blob(chunks, { type: "video/webm" });
 
+      // ---- FINALIZE STATS ----
+      const finalizeStats = () => {
+  const stats = recordingStatsRef.current;
+  if (!stats) {
+    return {
+      totalDetections: currentDetectionsRef.current.length,
+      objects: currentDetectionsRef.current.map(d => ({ class: d.class, score: d.score }))
+    };
+  }
+
+  if (stats.person.present) {
+    const last = stats.person.episodes[stats.person.episodes.length - 1];
+    if (last && !last.end) last.end = performance.now();
+    stats.person.present = false;
+  }
+
+  const personEpisodes = stats.person.episodes
+    .map(ep => ({
+      start: ep.start,
+      end: ep.end ?? ep.start,
+      durationMs: Math.max(0, (ep.end ?? ep.start) - ep.start)
+    }))
+    .filter(ep => ep.durationMs >= 120);
+
+  const totalPersonDurationMs = personEpisodes.reduce((a, b) => a + b.durationMs, 0);
+  const classes = Array.from(stats.classesSeen);
+  const perClass = Array.from(stats.perClassCounts.entries()).map(([k, v]) => ({ class: k, frames: v }));
+
+  const tr = stats.tracking;
+  const uniquePersons = tr.seenIds.size;
+  const tracksSummary = Array.from(tr.tracks.values()).map(t => ({
+    id: t.id,
+    firstSeenMs: t.firstSeenTs - stats.startedAt,
+    lastSeenMs: t.lastSeenTs - stats.startedAt,
+    maxScore: t.maxScore
+  }));
+
+  return {
+    // Changed: use uniquePersons instead of personEpisodes.length
+    totalDetections: uniquePersons,
+    uniquePersons,
+    person: {
+      episodes: personEpisodes,
+      totalDurationMs: totalPersonDurationMs,
+      maxScoreSeen: stats.person.maxScore
+    },
+    classesSeen: classes,
+    perClassFrameCounts: perClass,
+    tracks: tracksSummary
+  };
+};
+
+      const detectionSummary = finalizeStats();
+
       const formData = new FormData();
       formData.append("video", blob, "recording.webm");
-
-      const detectionSummary = {
-        totalDetections: currentDetectionsRef.current.length,
-        objects: currentDetectionsRef.current.map((d) => ({
-          class: d.class,
-          score: d.score,
-        })),
-      };
       formData.append("detectionResult", JSON.stringify(detectionSummary));
 
       try {
@@ -303,7 +515,6 @@ const Detectioncuh = () => {
     }
   }
 
-  // Show loading while fetching user
   if (loadingUser) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -314,14 +525,11 @@ const Detectioncuh = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 relative overflow-hidden">
-      {/* Background */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e293b,#020617_80%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(to_bottom_right,rgba(16,185,129,0.12),rgba(56,189,248,0.12))]" />
       <div className="absolute inset-0 opacity-[0.05] bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-size-[60px_60px]" />
 
-      {/* Content */}
       <div className="relative z-10 flex flex-col min-h-screen px-4 sm:px-6 py-6">
-        {/* Header */}
         <header className="w-full max-w-6xl mx-auto flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="h-7 w-7 rounded-xl bg-emerald-500/10 border border-emerald-400/40 flex items-center justify-center shadow-[0_0_14px_rgba(16,185,129,0.7)]">
@@ -364,9 +572,7 @@ const Detectioncuh = () => {
           </div>
         </header>
 
-        {/* Main layout: video + side panel */}
         <main className="w-full max-w-6xl mx-auto flex-1 flex flex-col lg:flex-row gap-8 items-stretch justify-center">
-          {/* Video feed */}
           <div className="flex-1 flex flex-col items-center">
             <h1 className="text-2xl sm:text-3xl font-semibold mb-4 text-center">
               AI Object Detection
@@ -389,7 +595,6 @@ const Detectioncuh = () => {
             )}
           </div>
 
-          {/* Info panel */}
           <aside className="w-full lg:w-[260px] xl:w-[280px] bg-slate-950/80 border border-slate-800 rounded-2xl p-5 shadow-[0_0_35px_rgba(0,0,0,0.7)] backdrop-blur-xl text-sm flex flex-col justify-between">
             <div className="space-y-4">
               <h2 className="text-sm font-semibold text-slate-200">Session Info</h2>
@@ -435,6 +640,10 @@ const Detectioncuh = () => {
                   <li className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
                     Sends email alert with cooldown.
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-indigo-300" />
+                    Tracks unique people per clip.
                   </li>
                 </ul>
               </div>
