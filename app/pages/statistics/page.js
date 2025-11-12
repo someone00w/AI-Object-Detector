@@ -9,6 +9,7 @@ export default function StatisticsPage() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
 
   const loadStats = async () => {
