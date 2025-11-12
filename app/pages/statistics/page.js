@@ -44,7 +44,7 @@ export default function StatisticsPage() {
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
         <p className="text-red-400">{error || "No stats available"}</p>
       </div>
-    );
+    )
   }
 
   const {
