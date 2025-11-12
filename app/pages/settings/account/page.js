@@ -3,6 +3,9 @@
 import { useAuth } from '@/app/lib/useAuth'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { useRouter } from "next/navigation";
+import { PencilIcon, TrashIcon, XMarkIcon, CheckIcon } from '@heroicons/react/24/outline'
+import SettingsPanel from '@/app/components/SettingsPanel'
 
 export default function AccountPage() {
   const { user, loading } = useAuth()
@@ -45,16 +48,20 @@ export default function AccountPage() {
             </div>
           </div>
 
-          <Link href="/pages/menu">
-            <motion.button
-              whileHover={{ scale: 1.05, y: -1 }}
-              whileTap={{ scale: 0.97, y: 0 }}
-              className="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-[11px] sm:text-xs text-slate-200 hover:border-emerald-400/60 hover:text-emerald-300 transition-all"
-            >
-              <span className="text-lg leading-none">←</span>
-              <span>Back to menu</span>
-            </motion.button>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/pages/menu">
+              <motion.button
+                whileHover={{ scale: 1.05, y: -1 }}
+                whileTap={{ scale: 0.97, y: 0 }}
+                className="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-[11px] sm:text-xs text-slate-200 hover:border-green-400/60 hover:text-green-300 transition-all"
+              >
+                <span className="text-lg leading-none">←</span>
+                <span>Back to menu</span>
+              </motion.button>
+            </Link>
+            <SettingsPanel />
+          </div>
+
         </header>
 
         {/* Main Content */}
