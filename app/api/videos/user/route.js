@@ -22,11 +22,12 @@ export async function GET(request) {
       )
     }
 
-    // 2. Get all videos for this user
+    // 2. Get videos based on user role
+    // Admin (role === 1) gets all videos, regular users get only their own
+    const whereClause = user.role === 1 ? {} : { user_id: user.id }
+
     const videos = await prisma.video.findMany({
-      where: {
-        user_id: user.id
-      },
+      where: whereClause,
       orderBy: {
         capture_time: 'desc' // Most recent first
       },
@@ -37,12 +38,33 @@ export async function GET(request) {
         capture_time: true,
         file_size_mb: true,
         detection_result: true,
-        uploaded_at: true
+        uploaded_at: true,
+        user_id: true,
+        user: {
+          select: {
+            username: true,
+            role: true
+          }
+        }
       }
     })
 
+    // Format the response to include username and role at the top level
+    const formattedVideos = videos.map(video => ({
+      id: video.id,
+      video_name: video.video_name,
+      file_path: video.file_path,
+      capture_time: video.capture_time,
+      file_size_mb: video.file_size_mb,
+      detection_result: video.detection_result,
+      uploaded_at: video.uploaded_at,
+      user_id: video.user_id,
+      username: video.user.username,
+      user_role: video.user.role
+    }))
+
     return NextResponse.json(
-      { videos },
+      { videos: formattedVideos },
       { status: 200 }
     )
 
