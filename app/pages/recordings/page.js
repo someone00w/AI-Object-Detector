@@ -301,8 +301,9 @@ export default function RecordingsPage() {
                     <div className="text-sm text-slate-400 space-y-1">
                       {isAdmin && video.username && (
                         <p className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-purple-400" />
+                          <span className={`h-2 w-2 rounded-full ${video.user_role === 1 ? 'bg-purple-400' : 'bg-blue-400'}`} />
                           Owner: <span className="text-slate-200">{video.username}</span>
+                          {video.user_role === 1 && <span className="text-xs text-purple-400">(Admin)</span>}
                         </p>
                       )}
                       <p>📅 {new Date(video.capture_time).toLocaleString()}</p>

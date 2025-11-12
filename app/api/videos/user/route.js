@@ -42,13 +42,14 @@ export async function GET(request) {
         user_id: true,
         user: {
           select: {
-            username: true
+            username: true,
+            role: true
           }
         }
       }
     })
 
-    // Format the response to include username at the top level
+    // Format the response to include username and role at the top level
     const formattedVideos = videos.map(video => ({
       id: video.id,
       video_name: video.video_name,
@@ -58,7 +59,8 @@ export async function GET(request) {
       detection_result: video.detection_result,
       uploaded_at: video.uploaded_at,
       user_id: video.user_id,
-      username: video.user.username
+      username: video.user.username,
+      user_role: video.user.role
     }))
 
     return NextResponse.json(
