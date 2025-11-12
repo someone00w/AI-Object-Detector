@@ -32,7 +32,7 @@ export default function StatisticsPage() {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
         <div className="flex flex-col items-center">
-          <div className="animate-spin rounded-full h-14 w-14 border-t-4 border-emerald-400 border-opacity-80 mb-4" />
+          <div className="animate-spin rounded-full h-14 w-14 border-t-4 border-green-400 border-opacity-80 mb-4" />
           <p className="text-lg animate-pulse">Loading your stats...</p>
         </div>
       </div>
@@ -105,46 +105,12 @@ export default function StatisticsPage() {
             <motion.button
               whileHover={{ scale: 1.05, y: -1 }}
               whileTap={{ scale: 0.97, y: 0 }}
-              className="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-[11px] sm:text-xs text-slate-200 hover:border-emerald-400/60 hover:text-emerald-300 transition-all"
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-[11px] sm:text-xs text-slate-200 hover:border-green-400/60 hover:text-green-300 transition-all"
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
-              Menu
-              <svg
-                className={`h-3 w-3 transition-transform ${
-                  menuOpen ? "rotate-180" : ""
-                }`}
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
-
-            {menuOpen && (
-              <div className="absolute right-0 mt-2 w-44 rounded-xl border border-slate-800 bg-slate-950/95 shadow-xl shadow-black/60 backdrop-blur-sm z-20">
-                <button
-                  className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-900/80 hover:text-emerald-300 rounded-t-xl transition-colors"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    // ⬇️ change "/menu" to your actual menu route
-                    router.push("/pages/menu");
-                  }}
-                >
-                  ⬅ Back to main menu
-                </button>
-                <button
-                  className="w-full text-left px-3 py-2 text-[11px] text-slate-400 hover:bg-slate-900/80 rounded-b-xl transition-colors"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Close
-                </button>
-              </div>
-            )}
-          </div>
+              <span className="text-lg leading-none">←</span>
+              <span>Back to menu</span>
+            </motion.button>
+          </Link>
         </header>
 
         {/* Main Content */}
@@ -224,7 +190,7 @@ export default function StatisticsPage() {
             </p>
             <div className="mt-4 h-2 w-full rounded-full bg-slate-800 overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-emerald-400 to-lime-300"
+                className="h-full bg-linear-to-r from-green-400 to-teal-300"
                 style={{
                   width: `${Math.max(
                     8,
@@ -294,7 +260,7 @@ export default function StatisticsPage() {
 
 function StatCard({ label, value, helper }) {
   return (
-    <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-md shadow-slate-900/40 hover:border-emerald-400/40 hover:shadow-emerald-500/10 transition-all backdrop-blur-xl">
+    <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-md shadow-slate-900/40 hover:border-green-400/40 hover:shadow-green-500/10 transition-all backdrop-blur-xl">
       <div>
         <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500 mb-1">
           {label}
