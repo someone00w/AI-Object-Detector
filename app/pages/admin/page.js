@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { TrashIcon, PencilIcon } from '@heroicons/react/24/outline'
+import SettingsPanel from '@/app/components/SettingsPanel'
 
 export default function AdminPage() {
   const { user, loading } = useAuth({ requireAdmin: true })
@@ -134,6 +135,7 @@ export default function AdminPage() {
                 <span>Back to menu</span>
               </motion.button>
             </Link>
+            <SettingsPanel />
           </div>
         </header>
 

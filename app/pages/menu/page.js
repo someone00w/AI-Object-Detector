@@ -9,9 +9,9 @@ import {
   CameraIcon,
   PlayCircleIcon,
   ChartBarIcon,
-  ArrowRightOnRectangleIcon,
   KeyIcon,
 } from "@heroicons/react/24/outline";
+import SettingsPanel from "@/app/components/SettingsPanel";
 
 export default function MenuPage() {
   const router = useRouter();
@@ -42,15 +42,6 @@ export default function MenuPage() {
       router.push("/pages/login");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      router.push("/");
-    } catch (error) {
-      console.error("Logout failed:", error);
     }
   };
 
@@ -148,13 +139,7 @@ export default function MenuPage() {
             </div>
           </div>
 
-          <button
-            onClick={handleLogout}
-            className="inline-flex items-center gap-2 rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-2 text-xs sm:text-sm text-red-100 hover:bg-red-500/20 hover:border-red-400 transition-all"
-          >
-            <ArrowRightOnRectangleIcon className="w-4 h-4" />
-            Logout
-          </button>
+          <SettingsPanel />
         </header>
 
         {/* Main content */}

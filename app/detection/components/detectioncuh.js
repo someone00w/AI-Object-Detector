@@ -7,15 +7,14 @@ import * as tf from "@tensorflow/tfjs";
 import { renderPredictions } from "@/utils/render-predictions";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import SettingsPanel from "@/app/components/SettingsPanel";
 
 let detectInterval;
 
-const IOU_THRESHOLD = 0.3;     // match threshold for same person
-const TRACK_STALE_MS = 1000;   // drop track if unseen for > 1s
-const NO_PERSON_STOP_MS = 3000; // stop recording after 3s of no person
+const IOU_THRESHOLD = 0.3;
+const TRACK_STALE_MS = 1000;
 
 function iou(a, b) {
-  // a, b: [x, y, w, h]
   const ax2 = a[0] + a[2], ay2 = a[1] + a[3];
   const bx2 = b[0] + b[2], by2 = b[1] + b[3];
   const x1 = Math.max(a[0], b[0]);
@@ -31,48 +30,51 @@ function iou(a, b) {
 
 const Detectioncuh = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [cooldownTime, setCooldownTime] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [userEmail, setUserEmail] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
+  const [settings, setSettings] = useState({
+    emailNotifications: true,
+    noPersonStopTime: 5
+  });
 
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
-
-  // Recording flags and trackers
   const isRecordingRef = useRef(false);
-  const cooldownRef = useRef(false);
   const emailCooldownRef = useRef(false);
   const currentDetectionsRef = useRef([]);
   const lastPersonSeenRef = useRef(null);
   const noPersonTimeoutRef = useRef(null);
   const recorderRef = useRef(null);
-
-  // Aggregated per-recording stats (episodes + tracking)
   const recordingStatsRef = useRef(null);
-  /*
-    {
-      startedAt, lastFrameTs,
-      classesSeen: Set<string>,
-      perClassCounts: Map<class, frames>,
-      person: {
-        present: boolean,
-        episodes: [{start,end?}],
-        totalMs: number,
-        maxScore: number
-      },
-      tracking: {
-        nextId: number,
-        tracks: Map<id, { id, bbox, lastSeenTs, firstSeenTs, maxScore }>,
-        seenIds: Set<number>
-      }
-    }
-  */
 
   // Get user session on component mount
   useEffect(() => {
     fetchUserSession();
   }, []);
+
+  // Fetch settings from database on component mount
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  // Fetch settings from API
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch('/api/settings');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.settings) {
+          setSettings(data.settings);
+          console.log('⚙️ Settings loaded from database:', data.settings);
+        }
+      } else {
+        console.error('Failed to fetch settings from database');
+      }
+    } catch (error) {
+      console.error('Failed to fetch settings:', error);
+    }
+  };
 
   useEffect(() => {
     if (userEmail) {
@@ -105,10 +107,16 @@ const Detectioncuh = () => {
 
   // Email notification helper
   const sendEmailNotification = async () => {
+    if (!settings.emailNotifications) {
+      console.log('📧 Email notifications disabled in settings');
+      return;
+    }
+    
     if (!userEmail) {
       console.log('⚠️ No user email available, skipping notification');
       return;
     }
+    
     try {
       console.log("📧 Sending alert email to:", userEmail);
       const res = await fetch("/api/send-email", {
@@ -164,9 +172,11 @@ const Detectioncuh = () => {
 
     const personDetected = detectedObjects.some((obj) => obj.class === "person");
 
-    if (personDetected && !isRecordingRef.current && !cooldownRef.current) {
+    // Start recording if person detected and not already recording
+    if (personDetected && !isRecordingRef.current) {
       startRecording(net);
 
+      // Send email with cooldown
       if (!emailCooldownRef.current) {
         emailCooldownRef.current = true;
         sendEmailNotification();
@@ -176,6 +186,7 @@ const Detectioncuh = () => {
       }
     }
 
+    // Handle stop recording delay based on user settings
     if (isRecordingRef.current) {
       if (personDetected) {
         lastPersonSeenRef.current = Date.now();
@@ -184,9 +195,10 @@ const Detectioncuh = () => {
           noPersonTimeoutRef.current = null;
         }
       } else if (!noPersonTimeoutRef.current) {
+        const stopDelay = settings.noPersonStopTime * 1000;
         noPersonTimeoutRef.current = setTimeout(() => {
           stopRecording();
-        }, NO_PERSON_STOP_MS);
+        }, stopDelay);
       }
     }
   }
@@ -201,7 +213,6 @@ const Detectioncuh = () => {
     setIsRecording(true);
     lastPersonSeenRef.current = Date.now();
 
-    // Initialize per-recording stats
     const now = performance.now();
     recordingStatsRef.current = {
       startedAt: now,
@@ -253,7 +264,6 @@ const Detectioncuh = () => {
       try {
         const detectedObjects = await net.detect(video, undefined, 0.6);
 
-        // ====== STATS AGGREGATION (episodes + per-class) ======
         const ts = performance.now();
         const stats = recordingStatsRef.current;
         if (stats) {
@@ -283,7 +293,6 @@ const Detectioncuh = () => {
           stats.lastFrameTs = ts;
         }
 
-        // ====== LIGHTWEIGHT MULTI-PERSON TRACKING ======
         if (recordingStatsRef.current) {
           const tr = recordingStatsRef.current.tracking;
           const tsNow = performance.now();
@@ -355,7 +364,6 @@ const Detectioncuh = () => {
           }
         }
 
-        // ====== DRAW OVERLAYS ======
         recordCtx.font = "16px system-ui, sans-serif";
         recordCtx.textBaseline = "top";
 
@@ -407,57 +415,55 @@ const Detectioncuh = () => {
     recorder.onstop = async () => {
       const blob = new Blob(chunks, { type: "video/webm" });
 
-      // ---- FINALIZE STATS ----
       const finalizeStats = () => {
-  const stats = recordingStatsRef.current;
-  if (!stats) {
-    return {
-      totalDetections: currentDetectionsRef.current.length,
-      objects: currentDetectionsRef.current.map(d => ({ class: d.class, score: d.score }))
-    };
-  }
+        const stats = recordingStatsRef.current;
+        if (!stats) {
+          return {
+            totalDetections: currentDetectionsRef.current.length,
+            objects: currentDetectionsRef.current.map(d => ({ class: d.class, score: d.score }))
+          };
+        }
 
-  if (stats.person.present) {
-    const last = stats.person.episodes[stats.person.episodes.length - 1];
-    if (last && !last.end) last.end = performance.now();
-    stats.person.present = false;
-  }
+        if (stats.person.present) {
+          const last = stats.person.episodes[stats.person.episodes.length - 1];
+          if (last && !last.end) last.end = performance.now();
+          stats.person.present = false;
+        }
 
-  const personEpisodes = stats.person.episodes
-    .map(ep => ({
-      start: ep.start,
-      end: ep.end ?? ep.start,
-      durationMs: Math.max(0, (ep.end ?? ep.start) - ep.start)
-    }))
-    .filter(ep => ep.durationMs >= 120);
+        const personEpisodes = stats.person.episodes
+          .map(ep => ({
+            start: ep.start,
+            end: ep.end ?? ep.start,
+            durationMs: Math.max(0, (ep.end ?? ep.start) - ep.start)
+          }))
+          .filter(ep => ep.durationMs >= 120);
 
-  const totalPersonDurationMs = personEpisodes.reduce((a, b) => a + b.durationMs, 0);
-  const classes = Array.from(stats.classesSeen);
-  const perClass = Array.from(stats.perClassCounts.entries()).map(([k, v]) => ({ class: k, frames: v }));
+        const totalPersonDurationMs = personEpisodes.reduce((a, b) => a + b.durationMs, 0);
+        const classes = Array.from(stats.classesSeen);
+        const perClass = Array.from(stats.perClassCounts.entries()).map(([k, v]) => ({ class: k, frames: v }));
 
-  const tr = stats.tracking;
-  const uniquePersons = tr.seenIds.size;
-  const tracksSummary = Array.from(tr.tracks.values()).map(t => ({
-    id: t.id,
-    firstSeenMs: t.firstSeenTs - stats.startedAt,
-    lastSeenMs: t.lastSeenTs - stats.startedAt,
-    maxScore: t.maxScore
-  }));
+        const tr = stats.tracking;
+        const uniquePersons = tr.seenIds.size;
+        const tracksSummary = Array.from(tr.tracks.values()).map(t => ({
+          id: t.id,
+          firstSeenMs: t.firstSeenTs - stats.startedAt,
+          lastSeenMs: t.lastSeenTs - stats.startedAt,
+          maxScore: t.maxScore
+        }));
 
-  return {
-    // Changed: use uniquePersons instead of personEpisodes.length
-    totalDetections: uniquePersons,
-    uniquePersons,
-    person: {
-      episodes: personEpisodes,
-      totalDurationMs: totalPersonDurationMs,
-      maxScoreSeen: stats.person.maxScore
-    },
-    classesSeen: classes,
-    perClassFrameCounts: perClass,
-    tracks: tracksSummary
-  };
-};
+        return {
+          totalDetections: uniquePersons,
+          uniquePersons,
+          person: {
+            episodes: personEpisodes,
+            totalDurationMs: totalPersonDurationMs,
+            maxScoreSeen: stats.person.maxScore
+          },
+          classesSeen: classes,
+          perClassFrameCounts: perClass,
+          tracks: tracksSummary
+        };
+      };
 
       const detectionSummary = finalizeStats();
 
@@ -484,19 +490,6 @@ const Detectioncuh = () => {
         console.error("Upload error:", error);
         alert("Error uploading video");
       }
-
-      cooldownRef.current = true;
-      let remaining = 15;
-      setCooldownTime(remaining);
-      const cooldownInterval = setInterval(() => {
-        remaining -= 1;
-        setCooldownTime(remaining);
-        if (remaining <= 0) {
-          clearInterval(cooldownInterval);
-          cooldownRef.current = false;
-          setCooldownTime(0);
-        }
-      }, 1000);
     };
 
     recorder.start();
@@ -552,12 +545,6 @@ const Detectioncuh = () => {
                 Recording in progress
               </div>
             )}
-            {cooldownTime > 0 && (
-              <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/50 bg-yellow-400/10 px-3 py-1 text-yellow-100">
-                <span className="h-2 w-2 rounded-full bg-yellow-300" />
-                Cooldown: {cooldownTime}s
-              </div>
-            )}
 
             <Link href="/pages/menu">
               <motion.button
@@ -569,6 +556,8 @@ const Detectioncuh = () => {
                 <span>Back to menu</span>
               </motion.button>
             </Link>
+
+            <SettingsPanel />
           </div>
         </header>
 
@@ -631,7 +620,7 @@ const Detectioncuh = () => {
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
-                    Stops if no person seen for 3 seconds.
+                    Stops if no person seen for {settings.noPersonStopTime} second{settings.noPersonStopTime !== 1 ? 's' : ''}.
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
@@ -639,7 +628,7 @@ const Detectioncuh = () => {
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-                    Sends email alert with cooldown.
+                    Email alerts {settings.emailNotifications ? 'enabled' : 'disabled'}.
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-indigo-300" />

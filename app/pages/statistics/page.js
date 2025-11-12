@@ -3,122 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
-/* ----------------- Charts (SVG, no libs) ----------------- */
-function DonutChart({ size = 200, thickness = 20, segments = [], center }) {
-  const total = useMemo(
-    () => Math.max(0, segments.reduce((a, s) => a + (Number(s.value) || 0), 0)),
-    [segments]
-  );
-  const r = (size - thickness) / 2;
-  const cx = size / 2, cy = size / 2;
-  let acc = 0;
-
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Donut chart">
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth={thickness} />
-      {segments.map((s, i) => {
-        const v = Math.max(0, Number(s.value) || 0);
-        const tot = total || 1;
-        const frac = v / tot;
-        const dash = 2 * Math.PI * r * frac;
-        const gap = 2 * Math.PI * r - dash;
-        const start = (acc / tot) * 360;
-        acc += v;
-        return (
-          <circle
-            key={i}
-            cx={cx}
-            cy={cy}
-            r={r}
-            fill="none"
-            stroke={s.color}
-            strokeWidth={thickness}
-            strokeDasharray={`${dash} ${gap}`}
-            transform={`rotate(-90 ${cx} ${cy}) rotate(${start} ${cx} ${cy})`}
-            strokeLinecap="butt"
-          />
-        );
-      })}
-      <text
-        x="50%" y="50%" dominantBaseline="middle" textAnchor="middle"
-        className="fill-white"
-        style={{ fontSize: 20, fontWeight: 800, letterSpacing: ".02em" }}
-      >
-        {center ?? total}
-      </text>
-    </svg>
-  );
-}
-
-function BarChart({ data = [], height = 150 }) {
-  const trimmed = data.slice(0, 10);
-  const max = Math.max(1, ...trimmed.map((d) => Number(d.value) || 0));
-  return (
-    <div className="flex items-end justify-center gap-5">
-      {trimmed.map((d, i) => {
-        const v = Math.max(0, Number(d.value) || 0);
-        const h = (v / max) * height;
-        return (
-          <div key={i} className="flex flex-col items-center">
-            <div
-              className="w-6 rounded-md bg-white/70"
-              style={{ height: `${h}px` }}
-              title={`${d.label}: ${v}`}
-            />
-            <div className="text-xs text-white/90 mt-2">{d.label}</div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function AreaChart({ points = [], width = 520, height = 170, color = "#fff" }) {
-  const maxY = Math.max(1, ...points.map((p) => p.y));
-  const stepX = points.length > 1 ? width / (points.length - 1) : width;
-  const line = points
-    .map((p, i) => {
-      const x = i * stepX;
-      const y = height - (p.y / maxY) * height;
-      return `${i === 0 ? "M" : "L"}${x},${y}`;
-    })
-    .join(" ");
-  const area = `${line} L${width},${height} L0,${height} Z`;
-  const id = useMemo(() => `g${Math.random().toString(36).slice(2)}`, []);
-  return (
-    <svg width="100%" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Area chart">
-      <defs>
-        <linearGradient id={id} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.6" />
-          <stop offset="100%" stopColor={color} stopOpacity="0.1" />
-        </linearGradient>
-      </defs>
-      <path d={area} fill={`url(#${id})`} />
-      <path d={line} fill="none" stroke={color} strokeWidth="2.75" />
-    </svg>
-  );
-}
-
-/* ----------------- Tile (accessible colors) ----------------- */
-/* tip: use darker hues + light text for contrast; add a thin high-contrast border */
-function Tile({ title, value, subtitle, color, children }) {
-  return (
-    <motion.section
-      whileHover={{ y: -3, scale: 1.01 }}
-      className={`rounded-3xl p-8 text-white relative overflow-hidden shadow-xl ring-1 ring-white/10 ${color}`}
-    >
-      <h3 className="text-sm uppercase tracking-[0.2em] text-white/90">{title}</h3>
-      {value !== undefined && (
-        <div className="mt-2 text-4xl font-black leading-none text-white">{value}</div>
-      )}
-      {subtitle && <p className="text-sm text-white/85 mt-2">{subtitle}</p>}
-      {children && <div className="mt-6">{children}</div>}
-    </motion.section>
-  );
-}
-
-/* ----------------- Page ----------------- */
 export default function StatisticsPage() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -191,17 +77,18 @@ export default function StatisticsPage() {
             <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
             <p className="text-slate-300 text-sm">Readable, high-contrast overview</p>
           </div>
+
           <Link href="/pages/menu">
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.97 }}
-              className="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              whileHover={{ scale: 1.05, y: -1 }}
+              whileTap={{ scale: 0.97, y: 0 }}
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-[11px] sm:text-xs text-slate-200 hover:border-green-400/60 hover:text-green-300 transition-all"
             >
-              ← Back to Menu
+              <span className="text-lg leading-none">←</span>
+              <span>Back to menu</span>
             </motion.button>
           </Link>
-        </div>
-      </header>
+        </header>
 
       <main className="max-w-7xl mx-auto px-8 py-10 space-y-10">
         {/* KPIs (darker hues for better contrast) */}
