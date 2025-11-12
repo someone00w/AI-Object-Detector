@@ -107,10 +107,44 @@ export default function StatisticsPage() {
               whileTap={{ scale: 0.97, y: 0 }}
               className="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-[11px] sm:text-xs text-slate-200 hover:border-emerald-400/60 hover:text-emerald-300 transition-all"
             >
-              <span className="text-lg leading-none">←</span>
-              <span>Back to menu</span>
-            </motion.button>
-          </Link>
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+              Menu
+              <svg
+                className={`h-3 w-3 transition-transform ${
+                  menuOpen ? "rotate-180" : ""
+                }`}
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+
+            {menuOpen && (
+              <div className="absolute right-0 mt-2 w-44 rounded-xl border border-slate-800 bg-slate-950/95 shadow-xl shadow-black/60 backdrop-blur-sm z-20">
+                <button
+                  className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-900/80 hover:text-emerald-300 rounded-t-xl transition-colors"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    // ⬇️ change "/menu" to your actual menu route
+                    router.push("/pages/menu");
+                  }}
+                >
+                  ⬅ Back to main menu
+                </button>
+                <button
+                  className="w-full text-left px-3 py-2 text-[11px] text-slate-400 hover:bg-slate-900/80 rounded-b-xl transition-colors"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
         </header>
 
         {/* Main Content */}
