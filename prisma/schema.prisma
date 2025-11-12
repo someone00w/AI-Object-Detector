@@ -8,15 +8,18 @@ datasource db {
 }
 
 model User {
-  id         Int           @id @default(autoincrement())
-  username   String        @unique @db.VarChar(50)
-  email      String        @unique @db.VarChar(100)
-  password   String        @db.VarChar(255)
-  full_name  String?       @db.VarChar(100)
-  role       Int           @default(2)
-  created_at DateTime      @default(now())
-  updated_at DateTime      @updatedAt
-  videos     Video[]       // Relation to videos
+  id                     Int       @id @default(autoincrement())
+  username               String    @unique @db.VarChar(50)
+  email                  String    @unique @db.VarChar(100)
+  password               String    @db.VarChar(255)
+  full_name              String?   @db.VarChar(100)
+  role                   Int       @default(2)
+  email_verified         Boolean   @default(false)
+  verification_token     String?   @db.VarChar(255)
+  verification_expires   DateTime?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+  videos                 Video[]       // Relation to videos
   settings   UserSettings? // Relation to user settings
 
   @@map("users")

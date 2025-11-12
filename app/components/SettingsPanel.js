@@ -169,7 +169,7 @@ export default function SettingsPanel() {
                     <button
                       onClick={() => {
                         setIsOpen(false)
-                        router.push('/pages/account')
+                        router.push('/pages/settings/account')
                       }}
                       className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-emerald-400/40 transition-all text-left"
                     >

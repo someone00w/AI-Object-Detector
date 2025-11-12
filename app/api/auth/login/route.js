@@ -38,6 +38,14 @@ export async function POST(request) {
       )
     }
 
+    // Check if email is verified
+    if (!user.email_verified) {
+      return NextResponse.json(
+        { error: 'Please verify your email before logging in. Check your inbox for the verification link.' },
+        { status: 403 }
+      )
+    }
+
     // Return user data (excluding password)
     const { password: _, ...userWithoutPassword } = user
 

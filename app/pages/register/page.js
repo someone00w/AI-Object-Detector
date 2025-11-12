@@ -45,9 +45,9 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 relative overflow-hidden">
       {/* Background layers */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_#1e293b,_#020617_80%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e293b,#020617_80%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(to_bottom_right,rgba(16,185,129,0.12),rgba(56,189,248,0.12))]" />
-      <div className="absolute inset-0 opacity-[0.05] [background-image:linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] [background-size:60px_60px]" />
+      <div className="absolute inset-0 opacity-[0.05] bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-size-[60px_60px]" />
       <div className="absolute top-[12%] left-[8%] w-[260px] h-[260px] bg-emerald-400/12 rounded-full blur-[150px]" />
       <div className="absolute bottom-[12%] right-[10%] w-[300px] h-[300px] bg-sky-400/12 rounded-full blur-[160px]" />
 
@@ -82,7 +82,7 @@ export default function RegisterPage() {
             </div>
             <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight mb-4">
               Join{" "}
-              <span className="bg-gradient-to-r from-emerald-400 via-cyan-300 to-sky-500 bg-clip-text text-transparent">
+              <span className="bg-linear-to-r from-emerald-400 via-cyan-300 to-sky-500 bg-clip-text text-transparent">
                 DiddyWatch
               </span>
             </h1>
@@ -176,7 +176,7 @@ export default function RegisterPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex justify-center items-center gap-2 py-2.5 px-4 rounded-2xl text-sm font-medium text-slate-950 bg-gradient-to-r from-emerald-400 via-cyan-400 to-sky-500 shadow-[0_0_25px_rgba(45,212,191,0.6)] hover:shadow-[0_0_35px_rgba(56,189,248,0.9)] hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                  className="w-full flex justify-center items-center gap-2 py-2.5 px-4 rounded-2xl text-sm font-medium text-slate-950 bg-linear-to-r from-emerald-400 via-cyan-400 to-sky-500 shadow-[0_0_25px_rgba(45,212,191,0.6)] hover:shadow-[0_0_35px_rgba(56,189,248,0.9)] hover:-translate-y-px active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
                 >
                   {loading ? (
                     <>
