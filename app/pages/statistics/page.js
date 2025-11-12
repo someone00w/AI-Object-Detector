@@ -11,20 +11,23 @@ export default function StatisticsPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    async function loadStats() {
-      try {
-        const res = await fetch("/api/stats");
-        if (!res.ok) throw new Error("Failed to fetch stats");
-        const data = await res.json();
-        setStats(data);
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load statistics");
-      } finally {
-        setLoading(false);
-      }
+  const loadStats = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/stats");
+      if (!res.ok) throw new Error("Failed to fetch stats");
+      const data = await res.json();
+      setStats(data);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load statistics");
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     loadStats();
   }, []);
 
@@ -96,8 +99,27 @@ export default function StatisticsPage() {
             </p>
           </div>
 
-          {/* Right side: dropdown menu */}
-          <div className="relative self-start md:self-auto">
+          {/* Right side: dropdown menu + refresh */}
+          <div className="flex items-center gap-2 self-start md:self-auto">
+            <button
+              onClick={() => loadStats()}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/70 px-3 py-2 text-xs font-medium text-slate-200 shadow-sm shadow-slate-900/50 hover:border-emerald-400/60 hover:text-emerald-300 transition-colors"
+              title="Refresh stats"
+            >
+              <svg
+                className="h-3 w-3"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 1119.414 9.414 1 1 0 11-1.414-1.414 5 5 0 10-8.485-2.702V9a1 1 0 11-2 0V3a1 1 0 011-1h4a1 1 0 110 2H4z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Refresh
+            </button>
+            <div className="relative">
             <button
               onClick={() => setMenuOpen((prev) => !prev)}
               className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/70 px-3 py-2 text-xs font-medium text-slate-200 shadow-sm shadow-slate-900/50 hover:border-emerald-400/60 hover:text-emerald-300 transition-colors"
@@ -139,6 +161,7 @@ export default function StatisticsPage() {
                 </button>
               </div>
             )}
+            </div>
           </div>
         </header>
 
