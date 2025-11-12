@@ -25,6 +25,14 @@ export async function DELETE(request) {
       )
     }
 
+    // Check if user is admin
+    if (user.role !== 1) {
+      return NextResponse.json(
+        { error: 'Access denied. Only administrators can delete videos.' },
+        { status: 403 }
+      )
+    }
+
     // Get video ID and password from request body
     const body = await request.json()
     const { id, password } = body
@@ -43,9 +51,16 @@ export async function DELETE(request) {
       )
     }
 
-    // Check if video belongs to user
+    // Check if video exists
     const video = await prisma.video.findUnique({
-      where: { id: parseInt(id) }
+      where: { id: parseInt(id) },
+      include: {
+        user: {
+          select: {
+            username: true
+          }
+        }
+      }
     })
 
     if (!video) {
@@ -55,29 +70,22 @@ export async function DELETE(request) {
       )
     }
 
-    if (video.user_id !== user.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 403 }
-      )
-    }
-
-    // Verify password
-    const dbUser = await prisma.user.findUnique({
+    // Verify admin password (not the video owner's password)
+    const adminUser = await prisma.user.findUnique({
       where: { id: user.id }
     })
 
-    if (!dbUser) {
+    if (!adminUser) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'Admin user not found' },
         { status: 404 }
       )
     }
 
-    const isPasswordValid = await bcrypt.compare(password, dbUser.password)
+    const isPasswordValid = await bcrypt.compare(password, adminUser.password)
     if (!isPasswordValid) {
       return NextResponse.json(
-        { error: 'Invalid password' },
+        { error: 'Invalid admin password' },
         { status: 401 }
       )
     }
@@ -86,6 +94,7 @@ export async function DELETE(request) {
     try {
       const filePath = path.join(process.cwd(), 'public', video.file_path)
       await unlink(filePath)
+      console.log(`✅ Deleted file: ${filePath}`)
     } catch (fileError) {
       console.error('Error deleting file:', fileError)
       // Continue with database deletion even if file deletion fails
@@ -96,8 +105,17 @@ export async function DELETE(request) {
       where: { id: parseInt(id) }
     })
 
+    console.log(`✅ Admin ${user.username} deleted video ${video.video_name} owned by ${video.user.username}`)
+
     return NextResponse.json(
-      { message: 'Video deleted successfully' },
+      { 
+        message: 'Video deleted successfully',
+        deletedVideo: {
+          id: video.id,
+          name: video.video_name,
+          owner: video.user.username
+        }
+      },
       { status: 200 }
     )
 

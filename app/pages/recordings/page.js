@@ -18,25 +18,38 @@ export default function RecordingsPage() {
   const [passwordInput, setPasswordInput] = useState('')
   const [videoToDelete, setVideoToDelete] = useState(null)
   const [passwordError, setPasswordError] = useState('')
+  const [currentUser, setCurrentUser] = useState(null)
 
   useEffect(() => {
-    fetchVideos()
+    fetchUserAndVideos()
   }, [])
 
-  const fetchVideos = async () => {
+  const fetchUserAndVideos = async () => {
     try {
-      const response = await fetch('/api/videos/user')
-      
-      if (!response.ok) {
-        if (response.status === 401) {
+      // First get current user session
+      const sessionResponse = await fetch('/api/auth/session')
+      if (!sessionResponse.ok) {
+        if (sessionResponse.status === 401) {
+          router.push('/pages/login')
+          return
+        }
+        throw new Error('Failed to fetch session')
+      }
+      const sessionData = await sessionResponse.json()
+      setCurrentUser(sessionData.user)
+
+      // Then fetch videos (admin gets all, regular user gets their own)
+      const videosResponse = await fetch('/api/videos/user')
+      if (!videosResponse.ok) {
+        if (videosResponse.status === 401) {
           router.push('/pages/login')
           return
         }
         throw new Error('Failed to fetch videos')
       }
 
-      const data = await response.json()
-      setVideos(data.videos)
+      const videosData = await videosResponse.json()
+      setVideos(videosData.videos)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -89,6 +102,12 @@ export default function RecordingsPage() {
   }
 
   const handleDelete = async (videoId) => {
+    // Only admins can delete
+    if (currentUser?.role !== 1) {
+      alert('Only administrators can delete videos')
+      return
+    }
+
     setVideoToDelete(videoId)
     setShowPasswordModal(true)
     setPasswordInput('')
@@ -129,6 +148,7 @@ export default function RecordingsPage() {
       setShowPasswordModal(false)
       setPasswordInput('')
       setVideoToDelete(null)
+      alert('Video deleted successfully')
     } catch (err) {
       alert(`Error: ${err.message}`)
     } finally {
@@ -154,6 +174,8 @@ export default function RecordingsPage() {
     )
   }
 
+  const isAdmin = currentUser?.role === 1
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 relative overflow-hidden">
       {/* Background */}
@@ -171,10 +193,10 @@ export default function RecordingsPage() {
             </div>
             <div className="flex flex-col">
               <span className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
-                My Recordings
+                {isAdmin ? 'All Recordings (Admin View)' : 'My Recordings'}
               </span>
               <span className="text-xs text-slate-500">
-                Saved Detection Videos
+                {isAdmin ? 'System-wide Detection Videos' : 'Saved Detection Videos'}
               </span>
             </div>
           </div>
@@ -257,23 +279,32 @@ export default function RecordingsPage() {
                           >
                             <PencilIcon className="w-4 h-4 text-blue-400" />
                           </button>
-                          <button
-                            onClick={() => handleDelete(video.id)}
-                            disabled={deleting === video.id}
-                            className="p-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 rounded transition disabled:bg-slate-600 disabled:cursor-not-allowed"
-                            title="Delete"
-                          >
-                            {deleting === video.id ? (
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                              <TrashIcon className="w-4 h-4 text-red-400" />
-                            )}
-                          </button>
+                          {/* Only show delete button for admins */}
+                          {isAdmin && (
+                            <button
+                              onClick={() => handleDelete(video.id)}
+                              disabled={deleting === video.id}
+                              className="p-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 rounded transition disabled:bg-slate-600 disabled:cursor-not-allowed"
+                              title="Delete (Admin only)"
+                            >
+                              {deleting === video.id ? (
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <TrashIcon className="w-4 h-4 text-red-400" />
+                              )}
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}
                     
                     <div className="text-sm text-slate-400 space-y-1">
+                      {isAdmin && video.username && (
+                        <p className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-purple-400" />
+                          Owner: <span className="text-slate-200">{video.username}</span>
+                        </p>
+                      )}
                       <p>📅 {new Date(video.capture_time).toLocaleString()}</p>
                       <p>💾 {video.file_size_mb} MB</p>
                       
@@ -297,22 +328,22 @@ export default function RecordingsPage() {
         </main>
       </div>
 
-      {/* Password Modal */}
-      {showPasswordModal && (
+      {/* Password Modal - Only shown for admins */}
+      {showPasswordModal && isAdmin && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="bg-slate-900 rounded-2xl p-6 max-w-md w-full border border-slate-800 shadow-2xl"
           >
-            <h2 className="text-2xl font-bold mb-4 text-white">Confirm Deletion</h2>
+            <h2 className="text-2xl font-bold mb-4 text-white">Admin: Confirm Deletion</h2>
             <p className="text-slate-300 mb-4">
-              Please enter your password to confirm deletion of this recording. This action cannot be undone.
+              As an administrator, please enter your password to confirm deletion of this recording. This action cannot be undone.
             </p>
             
             <div className="mb-4">
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Password
+                Admin Password
               </label>
               <input
                 type="password"
@@ -326,8 +357,8 @@ export default function RecordingsPage() {
                     handleConfirmDelete()
                   }
                 }}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                placeholder="Enter your password"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="Enter your admin password"
                 autoFocus
                 disabled={deleting}
               />
@@ -348,7 +379,7 @@ export default function RecordingsPage() {
                     Deleting...
                   </span>
                 ) : (
-                  'Delete'
+                  'Delete Video'
                 )}
               </button>
               <button
