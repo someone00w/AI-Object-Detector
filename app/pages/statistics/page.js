@@ -139,6 +139,7 @@ export default function StatisticsPage() {
   const [loading, setLoading] = useState(true);
   const [heatmapData, setHeatmapData] = useState([]);
   const [loadingHeatmap, setLoadingHeatmap] = useState(true);
+  const [range, setRange] = useState("week");
 
   useEffect(() => {
     // Fetch both stats and heatmap data
@@ -278,7 +279,7 @@ export default function StatisticsPage() {
 
         {/* Graphs row */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Tile title="Storage Growth" subtitle="Cumulative from recent videos" color="bg-fuchsia-800">
+          <Tile title="Storage Growth" subtitle="Cumulative from recent videos">
             {areaStorage.length ? (
               <AreaChart points={areaStorage} color="#fff" />
             ) : (
@@ -286,15 +287,7 @@ export default function StatisticsPage() {
             )}
           </Tile>
 
-          <Tile title="Recent Sizes" subtitle="Last 10 videos" color="bg-emerald-800">
-            {sizesBars.length ? (
-              <BarChart data={sizesBars} />
-            ) : (
-              <div className="text-sm text-white/90">No videos yet</div>
-            )}
-          </Tile>
-
-          <Tile title="Detections Split" color="bg-cyan-800">
+          <Tile title="Detections Split">
             <div className="flex items-center justify-center gap-6">
               <DonutChart
                 size={180}
@@ -308,74 +301,17 @@ export default function StatisticsPage() {
               <div className="text-base">
                 <div className="flex items-center gap-2">
                   <span className="h-3 w-3 rounded-sm" style={{ background: "#38bdf8" }} />
-                  With detections: <b className="text-white">{withDet}</b>
+                  <span className="text-white">With detections: <b>{withDet}</b></span>
                 </div>
-                <div className="mt-4 text-[3.5rem] leading-none font-black tracking-tight">
-                  {totalDetections.toLocaleString()}
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="h-3 w-3 rounded-sm bg-white/35" />
+                  <span className="text-white">Without: <b>{withoutDet}</b></span>
                 </div>
-                <p className="mt-3 text-sm text-slate-700 max-w-xs">
-                  Total detections · {RANGE_LABELS[range] || "Selected range"}
-                </p>
-              </div>
-
-              {/* Range selector */}
-              <div className="inline-flex items-center gap-1 rounded-full bg-slate-900 text-slate-50 px-2 py-1 text-[10px] sm:text-[11px]">
-                {RANGE_OPTIONS.map((opt) => {
-                  const active = opt.key === range;
-                  return (
-                    <button
-                      key={opt.key}
-                      onClick={() => setRange(opt.key)}
-                      className={`px-3 py-1 rounded-full transition-all ${
-                        active
-                          ? "bg-lime-300 text-slate-900 font-semibold"
-                          : "text-slate-200/80 hover:bg-slate-800"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
               </div>
             </div>
+          </Tile>
 
-            {/* Right: detections over time graph */}
-            <div className="flex-[1.4] bg-lime-50 p-6 lg:p-10 border-t lg:border-t-0 lg:border-l border-slate-900/10">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-xs uppercase tracking-[0.2em] text-slate-600">
-                  Detections over time
-                </span>
-                <span className="text-xs text-slate-500">
-                  {detectionsTimelineRaw.length} points
-                </span>
-              </div>
-              {detectionPoints.length ? (
-                <>
-                  <AreaChart points={detectionPoints} color="#020617" />
-                  <div className="mt-4 flex justify-between text-[10px] text-slate-500">
-                    {detectionsTimelineRaw.map((d, i) => (
-                      <span
-                        key={i}
-                        className="truncate max-w-[4rem]"
-                        title={d.label}
-                      >
-                        {d.label}
-                      </span>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="text-sm text-slate-600">
-                  No detection data for this range yet.
-                </div>
-              )}
-            </div>
-          </div>
-        </motion.section>
-
-        {/* Bottom cards: videos, detections summary, recent activity */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Tile title="Storage Breakdown" color="bg-purple-900">
+          <Tile title="Storage Breakdown">
             <div className="flex items-center justify-center gap-6">
               <DonutChart
                 size={180}
@@ -391,33 +327,6 @@ export default function StatisticsPage() {
                 Free: {free.toFixed(0)} MB
               </div>
             </div>
-          </Tile>
-
-          <Tile title="Recent activity">
-            {recentActivity.length ? (
-              <div className="max-h-52 overflow-y-auto pr-1 text-xs">
-                {recentActivity.slice(0, 8).map((ev) => (
-                  <div
-                    key={ev.id ?? ev.time + ev.label}
-                    className="flex items-center justify-between py-2 border-b border-white/10 last:border-none"
-                  >
-                    <div className="min-w-0 mr-3">
-                      <div className="truncate text-[13px]">{ev.label}</div>
-                      <div className="text-[11px] text-slate-300">
-                        {ev.time}
-                      </div>
-                    </div>
-                    <span className="text-[11px] bg-slate-800 px-2 py-1 rounded-full">
-                      {ev.count}×
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-xs text-slate-200">
-                No activity in this range.
-              </div>
-            )}
           </Tile>
         </section>
       </main>
