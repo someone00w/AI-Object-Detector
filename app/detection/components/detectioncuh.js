@@ -59,7 +59,7 @@ const Detectioncuh = () => {
   }, []);
 
   // Fetch settings from API
-  const fetchSettings = async () => {
+    const fetchSettings = async () => {
     try {
       const response = await fetch('/api/settings');
       if (response.ok) {
@@ -75,6 +75,17 @@ const Detectioncuh = () => {
       console.error('Failed to fetch settings:', error);
     }
   };
+
+  // Add this: Refresh settings periodically
+  useEffect(() => {
+    if (userEmail) {
+      // Fetch settings immediately
+      fetchSettings();
+      // Then refresh every 2 seconds while detection is active
+      const settingsInterval = setInterval(fetchSettings, 1000);
+      return () => clearInterval(settingsInterval);
+    }
+  }, [userEmail]);
 
   useEffect(() => {
     if (userEmail) {
@@ -480,15 +491,12 @@ const Detectioncuh = () => {
         if (response.ok) {
           const data = await response.json();
           console.log("✅ Video saved:", data.video);
-          alert("Recording saved successfully!");
         } else {
           const errorData = await response.json();
           console.error("❌ Failed to save:", errorData);
-          alert(`Failed: ${errorData.error || "Unknown error"}`);
         }
       } catch (error) {
         console.error("Upload error:", error);
-        alert("Error uploading video");
       }
     };
 

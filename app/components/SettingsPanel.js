@@ -47,6 +47,7 @@ export default function SettingsPanel() {
   }
 
   // Save settings to database
+    // Save settings to database
   const saveSettings = async () => {
     try {
       const response = await fetch('/api/settings', {
@@ -58,9 +59,14 @@ export default function SettingsPanel() {
       if (response.ok) {
         const data = await response.json()
         if (data.success) {
-          setSettings(tempSettings)
+          setSettings(tempSettings)  // Updates saved settings
           
-          // Show confirmation
+          // Broadcast settings change to other components
+          window.dispatchEvent(new CustomEvent('settingsChanged', {
+            detail: tempSettings
+          }));
+          
+          // Show confirmation toast
           setShowSaveConfirmation(true)
           setTimeout(() => {
             setShowSaveConfirmation(false)
