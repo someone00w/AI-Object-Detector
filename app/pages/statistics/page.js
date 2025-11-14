@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { PencilIcon, TrashIcon, XMarkIcon, CheckIcon } from "@heroicons/react/24/outline";
-import SettingsPanel from "@/app/components/SettingsPanel";
+import { useRouter } from "next/navigation";
+import { PencilIcon, TrashIcon, XMarkIcon, CheckIcon } from '@heroicons/react/24/outline'
+import SettingsPanel from '@/app/components/SettingsPanel'
+import { ActivityHeatmap } from '@/app/components/ActivityHeatmap'
 
-/* ----------------- Small SVG charts ----------------- */
-
+/* ----------------- Charts (SVG, no libs) ----------------- */
 function DonutChart({ size = 200, thickness = 20, segments = [], center }) {
   const total = useMemo(
     () => Math.max(0, segments.reduce((a, s) => a + (Number(s.value) || 0), 0)),
@@ -136,20 +137,43 @@ const RANGE_LABELS = {
 export default function StatisticsPage() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState("24h");
+  const [heatmapData, setHeatmapData] = useState([]);
+  const [loadingHeatmap, setLoadingHeatmap] = useState(true);
 
   useEffect(() => {
+    // Fetch both stats and heatmap data
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/stats?range=${encodeURIComponent(range)}`);
-        const data = await res.json();
-        setStats(data);
-      } catch (err) {
-        console.error(err);
+        console.log('🔄 Fetching stats and heatmap...');
+        
+        const [statsRes, heatmapRes] = await Promise.all([
+          fetch("/api/stats"),
+          fetch("/api/stats/heatmap")
+        ]);
+        
+        console.log('📊 Stats response status:', statsRes.status);
+        console.log('📈 Heatmap response status:', heatmapRes.status);
+        
+        const statsData = await statsRes.json();
+        const heatmapResult = await heatmapRes.json();
+        
+        console.log('📊 Stats data:', statsData);
+        console.log('📈 Heatmap result:', heatmapResult);
+        
+        setStats(statsData);
+        if (heatmapResult.success) {
+          console.log('✅ Setting heatmap data with', heatmapResult.data.length, 'entries');
+          setHeatmapData(heatmapResult.data);
+        } else {
+          console.log('⚠️ Heatmap fetch unsuccessful:', heatmapResult);
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch statistics:', error);
         setStats(null);
       } finally {
         setLoading(false);
+        setLoadingHeatmap(false);
       }
     })();
   }, [range]);
@@ -167,42 +191,38 @@ export default function StatisticsPage() {
 
   const totalVideos = Number(stats?.totalVideos ?? 0);
   const totalDetections = Number(stats?.totalDetections ?? 0);
-  const recentVideos = Array.isArray(stats?.recentVideos) ? stats.recentVideos : [];
+  const avgDetectionsPerVideo = Number(stats?.avgDetectionsPerVideo ?? 0);
+  const totalStorageMb = Number(stats?.totalStorageMb ?? 0);
+  const recent = Array.isArray(stats?.recentVideos) ? stats.recentVideos : [];
 
-  // Timeline for top graph: prefer stats.detectionsTimeline; otherwise derive from recentVideos
-  const detectionsTimelineRaw = Array.isArray(stats?.detectionsTimeline)
-    ? stats.detectionsTimeline
-    : recentVideos.map((v) => ({
-        label: new Date(v.capture_time).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        value:
-          Number(
-            v?.detection_result?.totalDetections ??
-              v?.detections ??
-              v?.total_detections
-          ) || 0,
-      }));
-
-  const detectionPoints = detectionsTimelineRaw.map((d) => ({
-    y: Number(d.value) || 0,
+  const sizesBars = recent.map((v) => ({
+    label: (v.video_name || "vid").slice(0, 6),
+    value: Number(v.file_size_mb || 0),
   }));
 
-  const recentActivity =
-    Array.isArray(stats?.recentActivities) && stats.recentActivities.length
-      ? stats.recentActivities
-      : recentVideos.map((v) => ({
-          id: v.id,
-          time: new Date(v.capture_time).toLocaleString(),
-          label: v.video_name,
-          count:
-            Number(
-              v?.detection_result?.totalDetections ??
-                v?.detections ??
-                v?.total_detections
-            ) || 0,
-        }));
+  let withDet = 0, withoutDet = 0;
+  recent.forEach((v) => {
+    const d = Number(
+      v?.detection_result?.totalDetections ??
+      v?.detections ??
+      v?.total_detections ?? 0
+    );
+    if (d > 0) withDet++; else withoutDet++;
+  });
+
+  const sorted = [...recent].sort(
+    (a, b) => new Date(a.capture_time) - new Date(b.capture_time)
+  );
+
+  let run = 0;
+  const areaStorage = sorted.map((v) => {
+    run += Number(v.file_size_mb || 0);
+    return { y: run };
+  });
+
+  const STORAGE_QUOTA_MB = 5000;
+  const used = totalStorageMb;
+  const free = Math.max(0, STORAGE_QUOTA_MB - used);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -232,18 +252,63 @@ export default function StatisticsPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-8 py-10 space-y-10">
-        {/* BIG top green-ish card with graph */}
-        <motion.section
-          layout
-          className="rounded-3xl overflow-hidden shadow-[0_24px_80px_rgba(0,0,0,0.65)] bg-lime-100 text-slate-900 ring-1 ring-black/10"
-        >
-          <div className="flex flex-col lg:flex-row">
-            {/* Left: big number + labels */}
-            <div className="flex-1 p-8 lg:p-10 flex flex-col justify-between gap-6">
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-slate-900/15 px-3 py-1 text-[11px] uppercase tracking-[0.2em]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-slate-900" />
-                  Detections
+        {/* KPIs (darker hues for better contrast) */}
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Tile title="Videos" value={totalVideos} subtitle="Total captured" color="bg-teal-700" />
+          <Tile title="Detections" value={totalDetections} subtitle={`Avg ${avgDetectionsPerVideo.toFixed(1)} / video`} color="bg-sky-800" />
+          <Tile title="Storage" value={`${totalStorageMb.toFixed(2)} MB`} subtitle="Used space" color="bg-indigo-900" />
+        </section>
+
+        {/* Activity Heatmap - NEW SECTION */}
+        <section>
+          <Tile title="Activity Heatmap" subtitle="Detection activity by day and hour" color="bg-slate-900">
+            {loadingHeatmap ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="h-6 w-6 rounded-full border-2 border-t-transparent border-emerald-400 animate-spin" />
+              </div>
+            ) : heatmapData.length > 0 ? (
+              <ActivityHeatmap data={heatmapData} />
+            ) : (
+              <div className="text-center text-white/70 py-8">
+                No activity data yet. Start recording to see your detection patterns!
+              </div>
+            )}
+          </Tile>
+        </section>
+
+        {/* Graphs row */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Tile title="Storage Growth" subtitle="Cumulative from recent videos" color="bg-fuchsia-800">
+            {areaStorage.length ? (
+              <AreaChart points={areaStorage} color="#fff" />
+            ) : (
+              <div className="text-sm text-white/90">No data yet</div>
+            )}
+          </Tile>
+
+          <Tile title="Recent Sizes" subtitle="Last 10 videos" color="bg-emerald-800">
+            {sizesBars.length ? (
+              <BarChart data={sizesBars} />
+            ) : (
+              <div className="text-sm text-white/90">No videos yet</div>
+            )}
+          </Tile>
+
+          <Tile title="Detections Split" color="bg-cyan-800">
+            <div className="flex items-center justify-center gap-6">
+              <DonutChart
+                size={180}
+                thickness={22}
+                center={`${withDet + withoutDet} vids`}
+                segments={[
+                  { value: withDet, color: "#38bdf8" },
+                  { value: withoutDet, color: "rgba(255,255,255,.35)" },
+                ]}
+              />
+              <div className="text-base">
+                <div className="flex items-center gap-2">
+                  <span className="h-3 w-3 rounded-sm" style={{ background: "#38bdf8" }} />
+                  With detections: <b className="text-white">{withDet}</b>
                 </div>
                 <div className="mt-4 text-[3.5rem] leading-none font-black tracking-tight">
                   {totalDetections.toLocaleString()}
@@ -310,31 +375,21 @@ export default function StatisticsPage() {
 
         {/* Bottom cards: videos, detections summary, recent activity */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Tile
-            title="Videos captured"
-            value={totalVideos}
-            subtitle={`${RANGE_LABELS[range] || "Selected range"}`}
-          />
-
-          <Tile
-            title="Detections per video"
-            value={
-              totalVideos
-                ? (totalDetections / totalVideos).toFixed(1)
-                : "—"
-            }
-            subtitle="Average detections across captured videos"
-          >
-            <div className="mt-3 text-xs text-slate-200 space-y-1">
-              <p>
-                • {totalDetections.toLocaleString()} detections in this range
-              </p>
-              <p>
-                •{" "}
-                {totalVideos
-                  ? `${(totalDetections / totalVideos).toFixed(1)} per clip`
-                  : "No clips yet"}
-              </p>
+          <Tile title="Storage Breakdown" color="bg-purple-900">
+            <div className="flex items-center justify-center gap-6">
+              <DonutChart
+                size={180}
+                thickness={22}
+                center={`${used.toFixed(0)} MB`}
+                segments={[
+                  { value: used, color: "#22c55e" },
+                  { value: free, color: "rgba(255,255,255,.35)" },
+                ]}
+              />
+              <div className="text-base leading-relaxed text-white">
+                Quota: {STORAGE_QUOTA_MB} MB <br />
+                Free: {free.toFixed(0)} MB
+              </div>
             </div>
           </Tile>
 
