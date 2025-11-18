@@ -1,84 +1,65 @@
-import { NextResponse } from 'next/server'
-import { prisma } from '@/app/lib/prisma'
-import { verifyToken } from '@/app/lib/jwt'
+import { NextResponse } from "next/server";
+import { prisma } from "@/app/lib/prisma";
+import { verifyToken } from "@/app/lib/jwt";
 
 export async function GET(request) {
   try {
-    console.log('🔍 Fetching heatmap data...')
-    
-    // Get current user from token
-    const token = request.cookies.get('token')?.value
-    let currentUserId = null
+    console.log("🔍 Fetching ALL heatmap data (no range filter)...");
+
+    // get user
+    const token = request.cookies.get("token")?.value;
+    let currentUserId = null;
 
     if (token) {
-      const user = verifyToken(token)
-      if (user) {
-        currentUserId = user.id
-        console.log('✅ User authenticated:', currentUserId)
-      }
-    } else {
-      console.log('⚠️ No token found')
+      const user = verifyToken(token);
+      if (user) currentUserId = user.id;
     }
 
-    // Fetch videos for the current user (or all if no user)
-    const whereClause = currentUserId ? { user_id: currentUserId } : {}
-    
-    console.log('📊 Fetching videos with clause:', whereClause)
-    
+    const whereClause = currentUserId ? { user_id: currentUserId } : {};
+
     const videos = await prisma.video.findMany({
       where: whereClause,
       select: {
         capture_time: true,
-        detection_result: true
+        detection_result: true,
       },
-      orderBy: {
-        capture_time: 'asc'
-      }
-    })
+      orderBy: { capture_time: "asc" },
+    });
 
-    console.log(`📹 Found ${videos.length} videos`)
+    const heatmapData = [];
 
-    // Process videos into heatmap data with timestamps
-    const heatmapData = []
+    videos.forEach((video) => {
+      let detectionCount = 0;
+      let det = video.detection_result;
 
-    videos.forEach(video => {
-      // Get detection count from video
-      let detectionCount = 0
-      if (video.detection_result) {
-        let det = video.detection_result
-        
-        // Parse if it's stored as string
-        if (typeof det === 'string') {
-          try {
-            det = JSON.parse(det)
-          } catch (e) {
-            console.warn('Failed to parse detection_result:', e)
-          }
-        }
-        
-        // Extract detection count
-        detectionCount = det?.totalDetections || det?.detections || det?.total_detections || 0
+      if (typeof det === "string") {
+        try {
+          det = JSON.parse(det);
+        } catch (e) {}
       }
 
-      // Add all entries (even with 0 detections for debugging)
+      if (det) {
+        if (typeof det.totalDetections === "number") detectionCount = det.totalDetections;
+        else if (Array.isArray(det.detections)) detectionCount = det.detections.length;
+        else if (typeof det.detections === "number") detectionCount = det.detections;
+        else if (typeof det.total_detections === "number") detectionCount = det.total_detections;
+      }
+
       heatmapData.push({
         timestamp: video.capture_time.toISOString(),
-        value: detectionCount
-      })
-    })
-
-    console.log(`✅ Processed ${heatmapData.length} heatmap entries`)
+        value: detectionCount,
+      });
+    });
 
     return NextResponse.json({
       success: true,
-      data: heatmapData
-    })
-
+      data: heatmapData, // ALWAYS full history
+    });
   } catch (error) {
-    console.error('❌ Error fetching heatmap data:', error)
+    console.error("❌ Heatmap error:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch heatmap data', details: error.message },
+      { success: false, error: "Heatmap fetch failed" },
       { status: 500 }
-    )
+    );
   }
 }
