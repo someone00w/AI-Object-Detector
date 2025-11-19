@@ -2,8 +2,15 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/app/lib/prisma'
 import { verifyPassword } from '@/app/lib/auth'
 import { generateToken } from '@/app/lib/jwt'
+import { rateLimitMiddleware } from '@/app/lib/rateLimit'
 
 export async function POST(request) {
+  // Rate limiting: 5 login attempts per minute
+  const rateLimitResult = rateLimitMiddleware(request, 5, 60000)
+  if (rateLimitResult.allowed !== true) {
+    return rateLimitResult
+  }
+
   try {
     const body = await request.json()
     const { username, password } = body

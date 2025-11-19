@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/app/lib/apiAuth'
 import { prisma } from '@/app/lib/prisma'
+import { sanitizeUsername } from '@/app/lib/sanitize'
 
 export async function PATCH(request) {
   try {
@@ -16,16 +17,19 @@ export async function PATCH(request) {
 
     const { username } = await request.json()
 
-    if (!username || !username.trim()) {
+    // Sanitize username
+    const sanitizedUsername = sanitizeUsername(username)
+    
+    if (!sanitizedUsername) {
       return NextResponse.json(
-        { error: 'Username is required' },
+        { error: 'Invalid username format. Must be 3-30 characters, alphanumeric with - or _' },
         { status: 400 }
       )
     }
 
     // Check if username already exists
     const existing = await prisma.user.findUnique({
-      where: { username }
+      where: { username: sanitizedUsername }
     })
 
     if (existing && existing.id !== user.id) {
@@ -38,21 +42,22 @@ export async function PATCH(request) {
     // Update username
     const updated = await prisma.user.update({
       where: { id: user.id },
-      data: { username },
+      data: { username: sanitizedUsername },
       select: {
         id: true,
         username: true,
-        email: true
+        email: true,
+        role: true
       }
     })
 
     return NextResponse.json(
-      { message: 'Username updated successfully', user: updated },
+      { success: true, user: updated },
       { status: 200 }
     )
 
   } catch (error) {
-    console.error('Update username error:', error)
+    console.error('Change username error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

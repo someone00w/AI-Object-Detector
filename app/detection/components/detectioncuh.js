@@ -15,15 +15,15 @@ const IOU_THRESHOLD = 0.3;
 const TRACK_STALE_MS = 1000;
 
 function iou(a, b) {
-  const ax2 = a[0] + a[2], ay2 = a[1] + a[3];
-  const bx2 = b[0] + b[2], by2 = b[1] + b[3];
-  const x1 = Math.max(a[0], b[0]);
-  const y1 = Math.max(a[1], b[1]);
-  const x2 = Math.min(ax2, bx2);
-  const y2 = Math.min(ay2, by2);
-  const inter = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
-  const areaA = a[2] * a[3];
-  const areaB = b[2] * b[3];
+  const [ax, ay, aw, ah] = a;
+  const [bx, by, bw, bh] = b;
+  const xA = Math.max(ax, bx);
+  const yA = Math.max(ay, by);
+  const xB = Math.min(ax + aw, bx + bw);
+  const yB = Math.min(ay + ah, by + bh);
+  const inter = Math.max(0, xB - xA) * Math.max(0, yB - yA);
+  const areaA = aw * ah;
+  const areaB = bw * bh;
   const union = areaA + areaB - inter;
   return union > 0 ? inter / union : 0;
 }
@@ -34,6 +34,7 @@ const Detectioncuh = () => {
   const [userEmail, setUserEmail] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [noPersonStopTime, setNoPersonStopTime] = useState(5);
+  const [webcamReady, setWebcamReady] = useState(false); // NEW STATE
 
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
@@ -83,8 +84,10 @@ const Detectioncuh = () => {
     };
   }, []);
 
+  // Start AI model when webcam is ready AND user session is loaded
   useEffect(() => {
-    if (userEmail) {
+    if (webcamReady && !loadingUser) {
+      console.log('✅ Starting AI model - Webcam ready and user session loaded');
       runCoco();
     }
     return () => {
@@ -92,7 +95,13 @@ const Detectioncuh = () => {
       stopRecording();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userEmail]);
+  }, [webcamReady, loadingUser]);
+
+  // Webcam ready handler
+  const handleWebcamReady = () => {
+    console.log('📹 Webcam is ready');
+    setWebcamReady(true);
+  };
 
   // Fetch logged-in user's email from session
   const fetchUserSession = async () => {
@@ -101,42 +110,42 @@ const Detectioncuh = () => {
       if (response.ok) {
         const data = await response.json();
         setUserEmail(data?.user?.email || null);
-        console.log('📧 Alerts will be sent to:', data?.user?.email);
+        console.log('✅ User session loaded:', data?.user?.email);
       } else {
-        console.error('No user session found');
+        console.warn('⚠️ Not authenticated - notifications will be disabled');
+        setUserEmail(null);
       }
     } catch (error) {
-      console.error('Failed to fetch user session:', error);
+      console.error('❌ Failed to fetch user session:', error);
+      setUserEmail(null);
     } finally {
       setLoadingUser(false);
     }
   };
 
+  // Send email notification to all enabled recipients
   const sendEmailNotification = async () => {
     if (!userEmail) {
-      console.log('⚠️ No user email available, skipping notification');
+      console.warn('⚠️ Skipping email - user not authenticated');
       return;
     }
-    
+
     try {
-      console.log("📧 Fetching email recipients...");
-      
       // Fetch all enabled email recipients for this user
-      const recipientsResponse = await fetch("/api/settings/email-recipients/notifications");
-      
-      if (!recipientsResponse.ok) {
-        console.error("❌ Failed to fetch recipients");
+      const response = await fetch('/api/settings/email-recipients/emails');
+      if (!response.ok) {
+        console.error('Failed to fetch email recipients');
         return;
       }
-      
-      const recipientsData = await recipientsResponse.json();
-      const recipients = recipientsData.recipients || [];
-      
+
+      const data = await response.json();
+      const recipients = data.recipients.filter(r => r.enabled);
+
       if (recipients.length === 0) {
-        console.log("📧 No email recipients found");
+        console.warn('⚠️ No enabled email recipients found');
         return;
       }
-      
+
       console.log(`📧 Sending alerts to ${recipients.length} recipient(s)`);
       
       // Send email to all recipients
@@ -165,13 +174,20 @@ const Detectioncuh = () => {
 
   async function runCoco() {
     setIsLoading(true);
-    await tf.ready();
-    const net = await cocoSSDLoad();
-    setIsLoading(false);
+    try {
+      await tf.ready();
+      console.log('🧠 TensorFlow ready');
+      const net = await cocoSSDLoad();
+      console.log('✅ COCO-SSD model loaded');
+      setIsLoading(false);
 
-    detectInterval = setInterval(() => {
-      runObjectDetection(net);
-    }, 200);
+      detectInterval = setInterval(() => {
+        runObjectDetection(net);
+      }, 200);
+    } catch (error) {
+      console.error('❌ Model loading failed:', error);
+      setIsLoading(false);
+    }
   }
 
   async function runObjectDetection(net) {
@@ -202,7 +218,8 @@ const Detectioncuh = () => {
     if (personDetected && !isRecordingRef.current) {
       startRecording(net);
 
-      if (!emailCooldownRef.current) {
+      // Only send email if user is authenticated
+      if (userEmail && !emailCooldownRef.current) {
         emailCooldownRef.current = true;
         sendEmailNotification();
         setTimeout(() => {
@@ -227,7 +244,7 @@ const Detectioncuh = () => {
   }
 
   function startRecording(net) {
-    // ...existing code...
+    // ...existing code... (keep everything as is)
     if (!webcamRef.current || !webcamRef.current.video) return;
 
     const video = webcamRef.current.video;
@@ -286,25 +303,23 @@ const Detectioncuh = () => {
       recordCtx.drawImage(video, 0, 0, recordCanvas.width, recordCanvas.height);
 
       try {
-        const detectedObjects = await net.detect(video, undefined, 0.6);
-
         const ts = performance.now();
+        const detectedObjects = currentDetectionsRef.current || [];
+
         const stats = recordingStatsRef.current;
         if (stats) {
-          const classesThisFrame = new Set(detectedObjects.map(o => o.class));
-          classesThisFrame.forEach(c => stats.classesSeen.add(c));
-          detectedObjects.forEach(o => {
-            stats.perClassCounts.set(o.class, (stats.perClassCounts.get(o.class) || 0) + 1);
-          });
-
-          const personObjs = detectedObjects.filter(o => o.class === "person");
-          const personNow = personObjs.length > 0;
-          const bestScore = personObjs.reduce((m, o) => Math.max(m, o.score || 0), 0);
-          const dt = Math.max(0, ts - stats.lastFrameTs);
-
-          if (stats.person.present) {
-            stats.person.totalMs += dt;
+          let personNow = false;
+          let bestScore = 0;
+          for (const obj of detectedObjects) {
+            stats.classesSeen.add(obj.class);
+            const cnt = stats.perClassCounts.get(obj.class) || 0;
+            stats.perClassCounts.set(obj.class, cnt + 1);
+            if (obj.class === "person") {
+              personNow = true;
+              if (obj.score > bestScore) bestScore = obj.score;
+            }
           }
+
           if (personNow && !stats.person.present) {
             stats.person.present = true;
             stats.person.episodes.push({ start: ts });
@@ -329,62 +344,35 @@ const Detectioncuh = () => {
           for (const t of tracksArr) {
             let bestIdx = -1;
             let bestIou = 0;
-            for (const idx of personDetIdxs) {
-              const det = detectedObjects[idx];
-              const i = iou(t.bbox, det.bbox);
-              if (i > bestIou) {
-                bestIou = i;
-                bestIdx = idx;
-              }
+            for (const detIdx of personDetIdxs) {
+              const det = detectedObjects[detIdx];
+              const score = iou(t.bbox, det.bbox);
+              if (score > bestIou) { bestIou = score; bestIdx = detIdx; }
             }
             if (bestIdx >= 0 && bestIou >= IOU_THRESHOLD) {
-              matches.push({ trackId: t.id, detIdx: bestIdx, iou: bestIou });
+              matches.push({ track: t, detIdx: bestIdx });
             }
           }
 
-          const chosenDet = new Set();
-          const chosenTrack = new Set();
-          const finalMatches = [];
-          matches
-            .sort((a, b) => b.iou - a.iou)
-            .forEach(m => {
-              if (!chosenDet.has(m.detIdx) && !chosenTrack.has(m.trackId)) {
-                chosenDet.add(m.detIdx);
-                chosenTrack.add(m.trackId);
-                finalMatches.push(m);
-              }
-            });
+          const unmatchedDets = personDetIdxs.filter(
+            idx => !matches.some(m => m.detIdx === idx)
+          );
 
-          finalMatches.forEach(({ trackId, detIdx }) => {
+          for (const m of matches) {
+            const det = detectedObjects[m.detIdx];
+            m.track.bbox = det.bbox;
+            m.track.lastSeen = tsNow;
+          }
+
+          for (const detIdx of unmatchedDets) {
             const det = detectedObjects[detIdx];
-            const t = tr.tracks.get(trackId);
-            if (t) {
-              t.bbox = det.bbox;
-              t.lastSeenTs = tsNow;
-              t.maxScore = Math.max(t.maxScore, det.score || 0);
-              tr.tracks.set(trackId, t);
-            }
-          });
+            const newTrack = { id: tr.nextId++, bbox: det.bbox, lastSeen: tsNow };
+            tr.tracks.set(newTrack.id, newTrack);
+            tr.seenIds.add(newTrack.id);
+          }
 
-          personDetIdxs
-            .filter(idx => !chosenDet.has(idx))
-            .forEach(idx => {
-              const det = detectedObjects[idx];
-              const id = tr.nextId++;
-              tr.tracks.set(id, {
-                id,
-                bbox: det.bbox,
-                lastSeenTs: tsNow,
-                firstSeenTs: tsNow,
-                maxScore: det.score || 0
-              });
-              tr.seenIds.add(id);
-            });
-
-          for (const [id, t] of tr.tracks) {
-            if (tsNow - t.lastSeenTs > TRACK_STALE_MS) {
-              tr.tracks.delete(id);
-            }
+          for (const [id, t] of tr.tracks.entries()) {
+            if (tsNow - t.lastSeen > TRACK_STALE_MS) tr.tracks.delete(id);
           }
         }
 
@@ -410,77 +398,78 @@ const Detectioncuh = () => {
           recordCtx.lineWidth = 4;
           recordCtx.strokeRect(x, y, width, height);
 
-          recordCtx.fillStyle = `rgba(255, 0, 0, ${isPerson ? 0.2 : 0})`;
+          recordCtx.fillStyle = isPerson ? "rgba(255,0,0,0.2)" : "rgba(0,255,255,0)";
           recordCtx.fillRect(x, y, width, height);
 
-          const icon = icons[prediction.class] || "";
-          const extra = isPerson && trackId ? ` #${trackId}` : "";
-          const label = `${icon} ${prediction.class}${extra} ${(prediction.score * 100).toFixed(1)}%`;
+          const icon = icons[prediction.class] || "❓";
+          const label = isPerson && trackId !== null
+            ? `${icon} ${prediction.class} (ID: ${trackId}) ${Math.round(prediction.score * 100)}%`
+            : `${icon} ${prediction.class} ${Math.round(prediction.score * 100)}%`;
+
           const textWidth = recordCtx.measureText(label).width;
+          const textX = x;
+          const textY = y > 30 ? y - 28 : y + height + 4;
+
+          recordCtx.fillStyle = "rgba(0, 0, 0, 0.75)";
+          recordCtx.fillRect(textX, textY, textWidth + 8, 24);
 
           recordCtx.fillStyle = isPerson ? "#FF0000" : "#00FFFF";
-          recordCtx.fillRect(x, y, textWidth + 6, 20);
-
-          recordCtx.fillStyle = "#000";
-          recordCtx.fillText(label, x + 3, y + 3);
-
-          recordCtx.fillStyle = isPerson ? "#FF5555" : "#55FFFF";
-          recordCtx.fillRect(x, y + height + 2, width * prediction.score, 4);
+          recordCtx.fillText(label, textX + 4, textY + 4);
         });
-      } catch (error) {
-        console.error("Detection error during recording:", error);
+      } catch (err) {
+        console.error("Frame draw error:", err);
       }
 
       requestAnimationFrame(drawFrame);
     };
 
     drawFrame();
+    recorder.start();
+    console.log("🔴 Recording started");
 
     recorder.onstop = async () => {
+      console.log("🛑 Recording stopped");
       const blob = new Blob(chunks, { type: "video/webm" });
 
       const finalizeStats = () => {
         const stats = recordingStatsRef.current;
-        if (!stats) {
-          return {
-            totalDetections: currentDetectionsRef.current.length,
-            objects: currentDetectionsRef.current.map(d => ({ class: d.class, score: d.score }))
-          };
+        if (!stats) return {};
+
+        const stoppedAt = performance.now();
+        const totalDurationMs = stoppedAt - stats.startedAt;
+
+        const personEpisodes = stats.person.episodes.map(ep => {
+          const s = ep.start - stats.startedAt;
+          const e = ep.end ? ep.end - stats.startedAt : totalDurationMs;
+          return { startMs: Math.round(s), endMs: Math.round(e) };
+        });
+
+        let totalPersonDurationMs = 0;
+        for (const ep of stats.person.episodes) {
+          const e = ep.end || stoppedAt;
+          const dur = e - ep.start;
+          if (dur > 0) totalPersonDurationMs += dur;
         }
 
-        if (stats.person.present) {
-          const last = stats.person.episodes[stats.person.episodes.length - 1];
-          if (last && !last.end) last.end = performance.now();
-          stats.person.present = false;
-        }
-
-        const personEpisodes = stats.person.episodes
-          .map(ep => ({
-            start: ep.start,
-            end: ep.end ?? ep.start,
-            durationMs: Math.max(0, (ep.end ?? ep.start) - ep.start)
-          }))
-          .filter(ep => ep.durationMs >= 120);
-
-        const totalPersonDurationMs = personEpisodes.reduce((a, b) => a + b.durationMs, 0);
         const classes = Array.from(stats.classesSeen);
-        const perClass = Array.from(stats.perClassCounts.entries()).map(([k, v]) => ({ class: k, frames: v }));
+        const perClass = {};
+        for (const [cls, count] of stats.perClassCounts.entries()) {
+          perClass[cls] = count;
+        }
 
-        const tr = stats.tracking;
-        const uniquePersons = tr.seenIds.size;
-        const tracksSummary = Array.from(tr.tracks.values()).map(t => ({
-          id: t.id,
-          firstSeenMs: t.firstSeenTs - stats.startedAt,
-          lastSeenMs: t.lastSeenTs - stats.startedAt,
-          maxScore: t.maxScore
-        }));
+        const tracksSummary = {};
+        const seenIdArr = Array.from(stats.tracking.seenIds);
+        for (const id of seenIdArr) {
+          tracksSummary[`track_${id}`] = { id };
+        }
+        const uniquePersons = seenIdArr.length;
 
         return {
-          totalDetections: uniquePersons,
+          totalDurationMs: Math.round(totalDurationMs),
           uniquePersons,
           person: {
             episodes: personEpisodes,
-            totalDurationMs: totalPersonDurationMs,
+            totalDurationMs: Math.round(totalPersonDurationMs),
             maxScoreSeen: stats.person.maxScore
           },
           classesSeen: classes,
@@ -512,34 +501,43 @@ const Detectioncuh = () => {
         console.error("Upload error:", error);
       }
     };
-
-    recorder.start();
   }
 
   function stopRecording() {
-    if (recorderRef.current && isRecordingRef.current) {
-      recorderRef.current.stop();
-      isRecordingRef.current = false;
-      setIsRecording(false);
-      recorderRef.current = null;
-      if (noPersonTimeoutRef.current) {
-        clearTimeout(noPersonTimeoutRef.current);
-        noPersonTimeoutRef.current = null;
-      }
+    if (!isRecordingRef.current) return;
+    isRecordingRef.current = false;
+    setIsRecording(false);
+
+    if (noPersonTimeoutRef.current) {
+      clearTimeout(noPersonTimeoutRef.current);
+      noPersonTimeoutRef.current = null;
     }
+
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      recorderRef.current.stop();
+      console.log("⏹️ Stopping recording...");
+    }
+
+    recorderRef.current = null;
   }
 
-  if (loadingUser) {
+  // Show loading while model OR user session loads
+  if (isLoading || loadingUser) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-white text-xl">Loading user session...</div>
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-14 w-14 border-t-4 border-emerald-400 border-opacity-80 mb-4" />
+          <div className="text-white text-xl">
+            {loadingUser ? 'Loading session...' : 'Loading AI Model...'}
+          </div>
+          <p className="text-slate-400 text-sm mt-2">This may take a moment...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 relative overflow-hidden">
-      {/* ...existing code... */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e293b,#020617_80%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(to_bottom_right,rgba(16,185,129,0.12),rgba(56,189,248,0.12))]" />
       <div className="absolute inset-0 opacity-[0.05] bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-size-[60px_60px]" />
@@ -588,22 +586,16 @@ const Detectioncuh = () => {
             <h1 className="text-2xl sm:text-3xl font-semibold mb-4 text-center">
               AI Object Detection
             </h1>
-            {isLoading ? (
-              <motion.div className="flex flex-col items-center justify-center text-center text-slate-200 h-80 w-full rounded-2xl border border-slate-800 bg-slate-950/70 backdrop-blur-xl">
-                <div className="animate-spin rounded-full h-14 w-14 border-t-4 border-emerald-400 border-opacity-80 mb-4" />
-                <p className="text-lg font-medium text-emerald-300">
-                  Loading AI model...
-                </p>
-                <p className="text-xs text-slate-500 mt-2 max-w-xs">
-                  This may take a few seconds the first time as the model is downloaded.
-                </p>
-              </motion.div>
-            ) : (
-              <motion.div className="relative flex justify-center items-center border border-slate-800 rounded-2xl p-2 shadow-[0_0_35px_rgba(15,23,42,0.9)] bg-slate-950/80 backdrop-blur-xl w-full h-full">
-                <Webcam ref={webcamRef} className="rounded-xl w-full max-h-[480px] object-cover" muted />
-                <canvas ref={canvasRef} className="absolute top-0 left-0 right-0 bottom-0 rounded-xl pointer-events-none" />
-              </motion.div>
-            )}
+            
+            <motion.div className="relative flex justify-center items-center border border-slate-800 rounded-2xl p-2 shadow-[0_0_35px_rgba(15,23,42,0.9)] bg-slate-950/80 backdrop-blur-xl w-full h-full">
+              <Webcam 
+                ref={webcamRef} 
+                className="rounded-xl w-full max-h-[480px] object-cover" 
+                muted 
+                onUserMedia={handleWebcamReady}
+              />
+              <canvas ref={canvasRef} className="absolute top-0 left-0 right-0 bottom-0 rounded-xl pointer-events-none" />
+            </motion.div>
           </div>
 
           <aside className="w-full lg:w-[260px] xl:w-[280px] bg-slate-950/80 border border-slate-800 rounded-2xl p-5 shadow-[0_0_35px_rgba(0,0,0,0.7)] backdrop-blur-xl text-sm flex flex-col justify-between">
@@ -628,12 +620,15 @@ const Detectioncuh = () => {
                 <div className="flex flex-col gap-1">
                   <span>Email Alerts</span>
                   <span className="text-slate-200 text-[11px] break-all">
-                    {userEmail || 'Loading...'}
+                    {userEmail || 'Not authenticated'}
                   </span>
                 </div>
               </div>
 
               <div className="border-t border-slate-800 pt-4">
+                <h3 className="text-xs font-medium text-slate-300 mb-2">
+                  Auto Recording
+                </h3>
                 <p className="text-xs text-slate-400 mb-2">How it works:</p>
                 <ul className="space-y-1.5 text-[11px] text-slate-400">
                   <li className="flex items-center gap-2">

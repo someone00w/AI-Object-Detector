@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextResponse } from 'next/response'
 import { requireAuth } from '@/app/lib/apiAuth'
 import { prisma } from '@/app/lib/prisma'
+import { sanitizeEmail } from '@/app/lib/sanitize'
 
 // GET - Fetch user's email recipients
 export async function GET(request) {
@@ -46,16 +47,10 @@ export async function POST(request) {
     const body = await request.json()
     const { email, enabled = true } = body
 
-    // Validate email
-    if (!email || typeof email !== 'string') {
-      return NextResponse.json(
-        { error: 'Email is required' },
-        { status: 400 }
-      )
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
+    // Sanitize and validate email
+    const sanitizedEmail = sanitizeEmail(email)
+    
+    if (!sanitizedEmail) {
       return NextResponse.json(
         { error: 'Invalid email format' },
         { status: 400 }
@@ -66,23 +61,23 @@ export async function POST(request) {
     const existing = await prisma.emailRecipient.findFirst({
       where: {
         user_id: user.id,
-        email: email.toLowerCase()
+        email: sanitizedEmail.toLowerCase()
       }
     })
 
     if (existing) {
       return NextResponse.json(
-        { error: 'This email is already in your recipient list' },
-        { status: 400 }
+        { error: 'Email already exists' },
+        { status: 409 }
       )
     }
 
-    // Create new recipient
+    // Create recipient
     const recipient = await prisma.emailRecipient.create({
       data: {
         user_id: user.id,
-        email: email.toLowerCase(),
-        enabled: enabled
+        email: sanitizedEmail.toLowerCase(),
+        enabled: Boolean(enabled)
       }
     })
 
