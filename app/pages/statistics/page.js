@@ -9,10 +9,7 @@ import { ActivityHeatmap } from "@/app/components/ActivityHeatmap";
 /* --------------------- Tile Component --------------------- */
 function Tile({ title, value, subtitle, children }) {
   return (
-    <motion.section
-      whileHover={{ y: -2, scale: 1.01 }}
-      className="rounded-3xl p-6 bg-slate-900/80 border border-white/10 shadow-md text-white"
-    >
+    <section className="rounded-3xl p-6 bg-slate-900/80 border border-white/10 shadow-md text-white hover:border-white/20 transition-colors">
       <h3 className="text-xs uppercase tracking-[0.18em] text-slate-400">{title}</h3>
       {value !== undefined && (
         <div className="text-3xl font-black mt-2">{value}</div>
@@ -21,7 +18,7 @@ function Tile({ title, value, subtitle, children }) {
         <p className="text-[11px] text-slate-400 mt-1">{subtitle}</p>
       )}
       {children && <div className="mt-4">{children}</div>}
-    </motion.section>
+    </section>
   );
 }
 
@@ -96,7 +93,7 @@ export default function StatisticsPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       {/* header */}
-      <header className="sticky top-0 z-10 backdrop-blur bg-slate-950/80 border-b border-white/15">
+      <header className="sticky top-0 backdrop-blur bg-slate-950/80 border-b border-white/15">
         <div className="max-w-7xl mx-auto px-8 py-5 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-white">Statistics</h1>

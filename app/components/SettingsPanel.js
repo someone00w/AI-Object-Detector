@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { XMarkIcon, UserCircleIcon, VideoCameraIcon, ArrowRightOnRectangleIcon, Cog6ToothIcon, ArrowPathIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
+import { createPortal } from 'react-dom'
 
 export default function SettingsPanel() {
   const router = useRouter()
@@ -18,6 +19,10 @@ export default function SettingsPanel() {
   const [settings, setSettings] = useState(defaultSettings)
   const [tempSettings, setTempSettings] = useState(defaultSettings)
   const [loading, setLoading] = useState(true)
+
+  // Mount flag for portal
+  const [mounted, setMounted] = useState(false)           // <-- add
+  useEffect(() => setMounted(true), [])   
 
   // Load settings from database when panel opens
   useEffect(() => {
@@ -117,16 +122,17 @@ export default function SettingsPanel() {
         <Cog6ToothIcon className="w-5 h-5" />
       </button>
 
-      {/* Backdrop */}
-      <AnimatePresence>
-        {isOpen && (
+      {/* Backdrop & Panel - Rendered via Portal */}
+      {mounted && isOpen && createPortal(
+        <AnimatePresence>
           <>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998]"
+              style={{ isolation: 'isolate' }}
             />
 
             {/* Sliding Panel */}
@@ -135,7 +141,8 @@ export default function SettingsPanel() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-full sm:w-96 bg-slate-950 border-l border-slate-800 shadow-2xl z-50 flex flex-col"
+              className="fixed top-0 right-0 h-full w-full sm:w-96 bg-slate-950 border-l border-slate-800 shadow-2xl z-[9999] flex flex-col"
+              style={{ isolation: 'isolate' }}
             >
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-slate-800">
@@ -155,13 +162,14 @@ export default function SettingsPanel() {
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    className="absolute top-20 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg"
+                    className="absolute top-20 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg"
                   >
                     <CheckCircleIcon className="w-5 h-5" />
                     <span className="text-sm font-medium">Settings saved!</span>
                   </motion.div>
                 )}
               </AnimatePresence>
+              
 
               {/* Content - Scrollable */}
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -300,8 +308,9 @@ export default function SettingsPanel() {
               </div>
             </motion.div>
           </>
-        )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   )
 }
