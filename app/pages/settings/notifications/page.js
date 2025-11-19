@@ -57,7 +57,17 @@ export default function NotificationsPage() {
       if (response.ok) {
         const data = await response.json()
         if (data.success) {
-          setEmailRecipients(data.recipients || [])
+          // Sort recipients: user's email first, then others by creation date
+          const sorted = (data.recipients || []).sort((a, b) => {
+            const aIsUser = a.email.toLowerCase() === user.email.toLowerCase()
+            const bIsUser = b.email.toLowerCase() === user.email.toLowerCase()
+            
+            if (aIsUser && !bIsUser) return -1
+            if (!aIsUser && bIsUser) return 1
+            
+            return new Date(a.createdAt) - new Date(b.createdAt)
+          })
+          setEmailRecipients(sorted)
         }
       }
     } catch (error) {
@@ -401,12 +411,19 @@ export default function NotificationsPage() {
                   </p>
                 </div>
               ) : (
-                emailRecipients.map((recipient) => (
+                emailRecipients.map((recipient) => {
+                  const isUserEmail = recipient.email.toLowerCase() === user.email.toLowerCase()
+                  
+                  return (
                   <motion.div
                     key={recipient.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center gap-3 p-4 bg-slate-800/50 border border-slate-700 rounded-xl hover:border-slate-600 transition-colors"
+                    className={`flex items-center gap-3 p-4 rounded-xl transition-colors ${
+                      isUserEmail 
+                        ? 'bg-blue-500/10 border-2 border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.15)]' 
+                        : 'bg-slate-800/50 border border-slate-700 hover:border-slate-600'
+                    }`}
                   >
                     {editingId === recipient.id ? (
                       // Edit Mode
@@ -438,8 +455,24 @@ export default function NotificationsPage() {
                       // View Mode
                       <>
                         <div className="flex-1">
-                          <p className="text-slate-100 font-medium">{recipient.email}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">
+                          <div className="flex items-center gap-2">
+                            <p className={`font-medium ${
+                              isUserEmail ? 'text-blue-100' : 'text-slate-100'
+                            }`}>
+                              {recipient.email}
+                            </p>
+                            {isUserEmail && (
+                              <span className="flex items-center gap-1.5 text-xs px-2.5 py-1 bg-blue-500/30 text-blue-200 border border-blue-400/50 rounded-full font-semibold shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                                </svg>
+                                Your Account
+                              </span>
+                            )}
+                          </div>
+                          <p className={`text-xs mt-0.5 ${
+                            isUserEmail ? 'text-blue-300/70' : 'text-slate-500'
+                          }`}>
                             {recipient.enabled ? 'Notifications enabled' : 'Notifications disabled'}
                           </p>
                         </div>
@@ -459,8 +492,8 @@ export default function NotificationsPage() {
                           />
                         </button>
 
-                        {/* Edit Button */}
-                        {recipient.email.toLowerCase() !== user.email.toLowerCase() && (
+                        {/* Edit Button - Hidden for user's email */}
+                        {!isUserEmail && (
                           <button
                             onClick={() => startEditing(recipient)}
                             className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
@@ -470,8 +503,8 @@ export default function NotificationsPage() {
                           </button>
                         )}
 
-                        {/* Delete Button */}
-                        {recipient.email.toLowerCase() !== user.email.toLowerCase() ? (
+                        {/* Delete Button - Hidden for user's email */}
+                        {!isUserEmail ? (
                           <button
                             onClick={() => handleDeleteEmail(recipient.id, recipient.email)}
                             className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
@@ -485,7 +518,7 @@ export default function NotificationsPage() {
                       </>
                     )}
                   </motion.div>
-                ))
+                )})
               )}
             </div>
 
