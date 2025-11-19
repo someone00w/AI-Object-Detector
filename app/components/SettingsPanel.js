@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { XMarkIcon, UserCircleIcon, VideoCameraIcon, ArrowRightOnRectangleIcon, Cog6ToothIcon, ArrowPathIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
+import { createPortal } from 'react-dom'
 
 export default function SettingsPanel() {
   const router = useRouter()
@@ -11,13 +12,16 @@ export default function SettingsPanel() {
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false)
   
   const defaultSettings = {
-    emailNotifications: true,
     noPersonStopTime: 5
   }
   
   const [settings, setSettings] = useState(defaultSettings)
   const [tempSettings, setTempSettings] = useState(defaultSettings)
   const [loading, setLoading] = useState(true)
+
+  // Mount flag for portal
+  const [mounted, setMounted] = useState(false)           // <-- add
+  useEffect(() => setMounted(true), [])   
 
   // Load settings from database when panel opens
   useEffect(() => {
@@ -91,7 +95,6 @@ export default function SettingsPanel() {
   // Reset to defaults
   const resetToDefaults = () => {
     const defaults = {
-      emailNotifications: true,
       noPersonStopTime: 5
     }
     setTempSettings(defaults)
@@ -117,16 +120,17 @@ export default function SettingsPanel() {
         <Cog6ToothIcon className="w-5 h-5" />
       </button>
 
-      {/* Backdrop */}
-      <AnimatePresence>
-        {isOpen && (
+      {/* Backdrop & Panel - Rendered via Portal */}
+      {mounted && isOpen && createPortal(
+        <AnimatePresence>
           <>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998]"
+              style={{ isolation: 'isolate' }}
             />
 
             {/* Sliding Panel */}
@@ -135,7 +139,8 @@ export default function SettingsPanel() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-full sm:w-96 bg-slate-950 border-l border-slate-800 shadow-2xl z-50 flex flex-col"
+              className="fixed top-0 right-0 h-full w-full sm:w-96 bg-slate-950 border-l border-slate-800 shadow-2xl z-[9999] flex flex-col"
+              style={{ isolation: 'isolate' }}
             >
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-slate-800">
@@ -155,13 +160,14 @@ export default function SettingsPanel() {
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    className="absolute top-20 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg"
+                    className="absolute top-20 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg"
                   >
                     <CheckCircleIcon className="w-5 h-5" />
                     <span className="text-sm font-medium">Settings saved!</span>
                   </motion.div>
                 )}
               </AnimatePresence>
+              
 
               {/* Content - Scrollable */}
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -189,6 +195,26 @@ export default function SettingsPanel() {
                       <span className="text-slate-500">→</span>
                     </button>
 
+                    {/* Email Notifications Option */}
+                    <button
+                      onClick={() => {
+                        setIsOpen(false)
+                        router.push('/pages/settings/notifications')
+                      }}
+                      className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-emerald-400/40 transition-all text-left"
+                    >
+                      <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-emerald-400">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-slate-200">Email Recipients</p>
+                        <p className="text-xs text-slate-500">Manage alert recipients</p>
+                      </div>
+                      <span className="text-slate-500">→</span>
+                    </button>
+
                     {/* Video Settings Option */}
                     <div className="p-4 rounded-xl border border-slate-800 bg-slate-900/50">
                       <div className="flex items-center gap-4 mb-6">
@@ -203,31 +229,8 @@ export default function SettingsPanel() {
 
                       {/* Settings Controls */}
                       <div className="space-y-4">
-                        {/* Email Notifications Toggle */}
-                        <div className="flex items-center justify-between py-2">
-                          <div>
-                            <p className="text-sm text-slate-300">Email Notifications</p>
-                            <p className="text-xs text-slate-500">Alert on person detection</p>
-                          </div>
-                          <button
-                            onClick={() => setTempSettings({
-                              ...tempSettings,
-                              emailNotifications: !tempSettings.emailNotifications
-                            })}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                              tempSettings.emailNotifications ? 'bg-emerald-500' : 'bg-slate-700'
-                            }`}
-                          >
-                            <span
-                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                tempSettings.emailNotifications ? 'translate-x-6' : 'translate-x-1'
-                              }`}
-                            />
-                          </button>
-                        </div>
-
                         {/* Stop Recording Delay Slider */}
-                        <div className="py-2 pt-6 border-t border-slate-700">
+                        <div className="py-2">
                           <div className="flex items-center justify-between mb-2">
                             <p className="text-sm text-slate-300">Stop Recording Delay</p>
                             <span className="text-xs font-medium text-purple-400">{tempSettings.noPersonStopTime}s</span>
@@ -300,8 +303,9 @@ export default function SettingsPanel() {
               </div>
             </motion.div>
           </>
-        )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   )
 }

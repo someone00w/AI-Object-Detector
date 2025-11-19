@@ -13,9 +13,7 @@ function Tile({ title, value, subtitle, children }) {
       whileHover={{ y: -2, scale: 1.01 }}
       className="rounded-3xl p-6 bg-slate-900/80 border border-white/10 shadow-md text-white"
     >
-      <h3 className="text-xs uppercase tracking-[0.18em] text-slate-400">
-        {title}
-      </h3>
+      <h3 className="text-xs uppercase tracking-[0.18em] text-slate-400">{title}</h3>
       {value !== undefined && (
         <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
       )}
@@ -23,7 +21,7 @@ function Tile({ title, value, subtitle, children }) {
         <p className="text-[11px] text-slate-400 mt-1">{subtitle}</p>
       )}
       {children && <div className="mt-4">{children}</div>}
-    </motion.section>
+    </section>
   );
 }
 
@@ -87,10 +85,10 @@ export default function StatisticsPage() {
 
   /* --------------------------- UI ------------------------ */
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
-      <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6">
-        {/* Header */}
-        <header className="flex items-center justify-between gap-4">
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      {/* header */}
+      <header className="sticky top-0 z-10 backdrop-blur bg-slate-950/80 border-b border-white/15">
+        <div className="max-w-7xl mx-auto px-8 py-5 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
               Detection Statistics

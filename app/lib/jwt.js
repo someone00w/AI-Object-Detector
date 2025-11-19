@@ -8,10 +8,12 @@ export function generateToken(user) {
       id: user.id,
       username: user.username,
       email: user.email,
-      role: user.role
+      role: user.role,
+      email_verified: user.email_verified,
+      created_at: user.created_at
     },
     JWT_SECRET,
-    { expiresIn: '7d' } // Token expires in 7 days
+    { expiresIn: '7d' }
   )
 }
 
