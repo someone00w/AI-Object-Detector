@@ -47,19 +47,40 @@ const Detectioncuh = () => {
   const noPersonTimeoutRef = useRef(null);
   const recorderRef = useRef(null);
   const recordingStatsRef = useRef(null);
+  
+  const settingsRef = useRef(settings);
+  
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
-  // Get user session on component mount
+  // ✅ FIX: Fetch user session on mount
   useEffect(() => {
     fetchUserSession();
   }, []);
 
   // Fetch settings from database on component mount
   useEffect(() => {
-    fetchSettings();
+    if (userEmail) {
+      fetchSettings();
+    }
+  }, [userEmail]);
+
+  useEffect(() => {
+    const handleSettingsChanged = (event) => {
+      console.log('⚙️ Settings changed event received:', event.detail);
+      setSettings(event.detail);
+    };
+
+    window.addEventListener('settingsChanged', handleSettingsChanged);
+    
+    return () => {
+      window.removeEventListener('settingsChanged', handleSettingsChanged);
+    };
   }, []);
 
   // Fetch settings from API
-    const fetchSettings = async () => {
+  const fetchSettings = async () => {
     try {
       const response = await fetch('/api/settings');
       if (response.ok) {
@@ -76,12 +97,10 @@ const Detectioncuh = () => {
     }
   };
 
-  // Add this: Refresh settings periodically
+  // Refresh settings periodically
   useEffect(() => {
     if (userEmail) {
-      // Fetch settings immediately
       fetchSettings();
-      // Then refresh every 2 seconds while detection is active
       const settingsInterval = setInterval(fetchSettings, 1000);
       return () => clearInterval(settingsInterval);
     }
@@ -116,10 +135,13 @@ const Detectioncuh = () => {
     }
   };
 
-  // Email notification helper
+  // ✅ FIX: Use settingsRef.current for real-time settings check
   const sendEmailNotification = async () => {
-    if (!settings.emailNotifications) {
-      console.log('📧 Email notifications disabled in settings');
+    const currentSettings = settingsRef.current;
+    console.log('📧 Checking email notification settings:', currentSettings);
+    
+    if (!currentSettings.emailNotifications) {
+      console.log('📧 Email notifications disabled in settings - skipping');
       return;
     }
     
@@ -183,11 +205,9 @@ const Detectioncuh = () => {
 
     const personDetected = detectedObjects.some((obj) => obj.class === "person");
 
-    // Start recording if person detected and not already recording
     if (personDetected && !isRecordingRef.current) {
       startRecording(net);
 
-      // Send email with cooldown
       if (!emailCooldownRef.current) {
         emailCooldownRef.current = true;
         sendEmailNotification();
@@ -197,7 +217,6 @@ const Detectioncuh = () => {
       }
     }
 
-    // Handle stop recording delay based on user settings
     if (isRecordingRef.current) {
       if (personDetected) {
         lastPersonSeenRef.current = Date.now();
@@ -206,7 +225,7 @@ const Detectioncuh = () => {
           noPersonTimeoutRef.current = null;
         }
       } else if (!noPersonTimeoutRef.current) {
-        const stopDelay = settings.noPersonStopTime * 1000;
+        const stopDelay = settingsRef.current.noPersonStopTime * 1000;
         noPersonTimeoutRef.current = setTimeout(() => {
           stopRecording();
         }, stopDelay);
@@ -215,6 +234,7 @@ const Detectioncuh = () => {
   }
 
   function startRecording(net) {
+    // ...existing code...
     if (!webcamRef.current || !webcamRef.current.video) return;
 
     const video = webcamRef.current.video;
@@ -526,6 +546,7 @@ const Detectioncuh = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 relative overflow-hidden">
+      {/* ...existing code... */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e293b,#020617_80%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(to_bottom_right,rgba(16,185,129,0.12),rgba(56,189,248,0.12))]" />
       <div className="absolute inset-0 opacity-[0.05] bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-size-[60px_60px]" />

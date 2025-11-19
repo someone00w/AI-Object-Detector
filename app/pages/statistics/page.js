@@ -228,7 +228,7 @@ export default function StatisticsPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       {/* header */}
-      <header className="sticky top-0 z-10 backdrop-blur bg-slate-950/80 border-b border-white/15">
+      <header className="sticky top-0 z-[5] bg-slate-950 border-b border-white/15">
         <div className="max-w-7xl mx-auto px-8 py-5 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-white">Statistics</h1>
