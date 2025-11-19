@@ -112,7 +112,7 @@ export default function VerifyNewEmailPage() {
               <p className="text-slate-400 mb-6">{message}</p>
               <div className="space-y-3">
                 <Link 
-                  href="/pages/settings/account/editEmail"
+                  href="/pages/settings/account/change-email"
                   className="block px-6 py-2 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition"
                 >
                   Try Again

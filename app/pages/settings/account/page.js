@@ -41,7 +41,7 @@ export default function AccountPage() {
     setUsernameError('')
 
     try {
-      const response = await fetch('/api/users/changeUsername', {
+      const response = await fetch('/api/users/change-username', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: newUsername })
@@ -177,7 +177,7 @@ export default function AccountPage() {
                       <span className="text-xs text-green-400 mt-1 inline-block">✓ Verified</span>
                     )}
                   </div>
-                  <Link href="/pages/settings/account/editEmail">
+                  <Link href="/pages/settings/account/change-email">
                     <button className="px-4 py-2 text-sm bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 rounded-lg transition">
                       Change Email
                     </button>
@@ -225,7 +225,7 @@ export default function AccountPage() {
                   <p className="text-lg text-slate-100">Password</p>
                   <p className="text-sm text-slate-400">••••••••••••</p>
                 </div>
-                <Link href="/pages/settings/account/editPassword">
+                <Link href="/pages/settings/account/change-password">
                   <button className="px-4 py-2 text-sm bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 rounded-lg transition">
                     Change Password
                   </button>

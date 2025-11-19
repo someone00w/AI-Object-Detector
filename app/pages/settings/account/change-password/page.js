@@ -4,33 +4,53 @@ import { useAuth } from '@/app/lib/useAuth'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
-export default function ChangeEmailPage() {
+export default function ChangePasswordPage() {
   const { user, loading } = useAuth()
-  const [newEmail, setNewEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const router = useRouter()
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+
+    // Validation
+    if (newPassword !== confirmPassword) {
+      setError('New passwords do not match')
+      return
+    }
+
+    if (newPassword.length < 8) {
+      setError('New password must be at least 8 characters')
+      return
+    }
+
+    if (newPassword === currentPassword) {
+      setError('New password must be different from current password')
+      return
+    }
+
     setSubmitting(true)
 
     try {
-      const response = await fetch('/api/users/changeEmail', {
+      const response = await fetch('/api/users/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newEmail, password })
+        body: JSON.stringify({ currentPassword, newPassword })
       })
 
       const data = await response.json()
 
       if (response.ok) {
-        setSuccess(true)
+        alert('Password changed successfully! Please log in with your new password.')
+        router.push('/pages/login')
       } else {
-        setError(data.error || 'Failed to change email')
+        setError(data.error || 'Failed to change password')
       }
     } catch (error) {
       setError('An error occurred')
@@ -48,33 +68,6 @@ export default function ChangeEmailPage() {
   }
 
   if (!user) return null
-
-  if (success) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 relative overflow-hidden flex items-center justify-center">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e293b,#020617_80%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_bottom_right,rgba(16,185,129,0.12),rgba(56,189,248,0.12))]" />
-        
-        <div className="relative z-10 max-w-md w-full mx-4 bg-slate-900/70 border border-slate-800 rounded-2xl p-8 shadow-2xl backdrop-blur-xl text-center">
-          <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold mb-4">Verification Email Sent!</h1>
-          <p className="text-slate-400 mb-6">
-            We've sent a verification link to <strong className="text-white">{newEmail}</strong>. 
-            Please check your inbox and click the link to confirm your new email address.
-          </p>
-          <Link href="/pages/settings/account">
-            <button className="w-full px-6 py-3 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 rounded-lg transition">
-              Back to Account Settings
-            </button>
-          </Link>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 relative overflow-hidden">
@@ -97,42 +90,47 @@ export default function ChangeEmailPage() {
 
         <main className="w-full max-w-2xl mx-auto">
           <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-8 shadow-lg shadow-slate-900/40 backdrop-blur-xl">
-            <h1 className="text-2xl font-semibold mb-2">Change Email Address</h1>
+            <h1 className="text-2xl font-semibold mb-2">Change Password</h1>
             <p className="text-slate-400 mb-6">
-              Enter your new email address and confirm with your password. We'll send a verification link to your new email.
+              Enter your current password and choose a new secure password.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label className="block text-sm text-slate-400 mb-2">Current Email</label>
+                <label className="block text-sm text-slate-400 mb-2">Current Password</label>
                 <input
-                  type="email"
-                  value={user.email}
-                  disabled
-                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-400"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-slate-400 mb-2">New Email Address</label>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
                   required
-                  placeholder="Enter new email"
+                  placeholder="Enter current password"
                   className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm text-slate-400 mb-2">Confirm Password</label>
+                <label className="block text-sm text-slate-400 mb-2">New Password</label>
                 <input
                   type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
                   required
-                  placeholder="Enter your current password"
+                  placeholder="Enter new password"
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Must be at least 8 characters with uppercase, lowercase, and number
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Confirm New Password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  placeholder="Confirm new password"
                   className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -143,13 +141,19 @@ export default function ChangeEmailPage() {
                 </div>
               )}
 
+              <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-lg">
+                <p className="text-sm text-yellow-300">
+                  ⚠️ After changing your password, you'll be logged out and need to sign in again with your new password.
+                </p>
+              </div>
+
               <div className="flex gap-4">
                 <button
                   type="submit"
                   disabled={submitting}
                   className="flex-1 px-6 py-3 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 rounded-lg transition disabled:opacity-50"
                 >
-                  {submitting ? 'Sending Verification...' : 'Send Verification Email'}
+                  {submitting ? 'Changing Password...' : 'Change Password'}
                 </button>
                 <Link href="/pages/settings/account" className="flex-1">
                   <button
