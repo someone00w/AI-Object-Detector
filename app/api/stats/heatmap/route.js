@@ -4,19 +4,55 @@ import { verifyToken } from "@/app/lib/jwt";
 
 export async function GET(request) {
   try {
-    console.log("🔍 Fetching ALL heatmap data (no range filter)...");
+    const { searchParams } = new URL(request.url);
+    const range = searchParams.get("range") || "week";
 
-    // get user
+    console.log(`🔍 Heatmap data for range="${range}"`);
+
+    // 1) Time window
+    const now = new Date();
+    let from = null;
+
+    switch (range) {
+      case "24h":
+        from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case "week":
+        from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case "month":
+        from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case "year":
+        from = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        break;
+      case "all":
+      default:
+        from = null;
+        break;
+    }
+
+    const timeFilter = from ? { capture_time: { gte: from } } : {};
+
+    // 2) Current user (if logged in)
     const token = request.cookies.get("token")?.value;
     let currentUserId = null;
 
     if (token) {
-      const user = verifyToken(token);
-      if (user) currentUserId = user.id;
+      try {
+        const user = verifyToken(token);
+        if (user) currentUserId = user.id;
+      } catch (err) {
+        console.warn("Invalid token in heatmap route:", err?.message);
+      }
     }
 
-    const whereClause = currentUserId ? { user_id: currentUserId } : {};
+    const whereClause = {
+      ...(currentUserId ? { user_id: currentUserId } : {}),
+      ...timeFilter,
+    };
 
+    // 3) Fetch videos for this window
     const videos = await prisma.video.findMany({
       where: whereClause,
       select: {
@@ -28,32 +64,43 @@ export async function GET(request) {
 
     const heatmapData = [];
 
-    videos.forEach((video) => {
-      let detectionCount = 0;
+    for (const video of videos) {
       let det = video.detection_result;
 
       if (typeof det === "string") {
         try {
           det = JSON.parse(det);
-        } catch (e) {}
+        } catch (err) {
+          det = null;
+        }
       }
 
-      if (det) {
-        if (typeof det.totalDetections === "number") detectionCount = det.totalDetections;
-        else if (Array.isArray(det.detections)) detectionCount = det.detections.length;
-        else if (typeof det.detections === "number") detectionCount = det.detections;
-        else if (typeof det.total_detections === "number") detectionCount = det.total_detections;
+      let count = 0;
+
+      // Try to count detections the same way as stats route
+      if (det && typeof det === "object") {
+        if (typeof det.totalDetections === "number") {
+          count = det.totalDetections;
+        } else if (Array.isArray(det.detections)) {
+          count = det.detections.length;
+        } else if (Array.isArray(det.predictions)) {
+          count = det.predictions.length;
+        }
       }
+
+      // Fallback: at least 1 if we know there was some detection_result
+      if (!count && det) count = 1;
 
       heatmapData.push({
         timestamp: video.capture_time.toISOString(),
-        value: detectionCount,
+        value: count,
       });
-    });
+    }
 
     return NextResponse.json({
       success: true,
-      data: heatmapData, // ALWAYS full history
+      data: heatmapData,
+      range,
     });
   } catch (error) {
     console.error("❌ Heatmap error:", error);

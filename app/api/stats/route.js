@@ -2,17 +2,17 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { verifyToken } from "@/app/lib/jwt";
 
-// Helper: try to normalise detection_result into an array of detections
+// Normalise detection_result into an array of detection objects
 function extractDetections(det) {
   if (!det) return [];
 
-  // If it's already an array of objects
+  // If it's already an array
   if (Array.isArray(det)) {
     if (det.length && typeof det[0] === "object") return det;
     return [];
   }
 
-  // If it's an object that contains arrays (detections, predictions, etc.)
+  // If it's an object with common keys
   if (typeof det === "object") {
     if (Array.isArray(det.detections) && det.detections.length) {
       return det.detections;
@@ -21,7 +21,7 @@ function extractDetections(det) {
       return det.predictions;
     }
 
-    // Fallback: pick any array-of-objects inside the object
+    // Fallback: first array-of-objects inside
     for (const key of Object.keys(det)) {
       const val = det[key];
       if (Array.isArray(val) && val.length && typeof val[0] === "object") {
@@ -38,7 +38,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const range = searchParams.get("range") || "week";
 
-    // --- 1) Compute time window based on range ---
+    // --- 1) Time window from range ---
     const now = new Date();
     let from = null;
 
@@ -57,78 +57,83 @@ export async function GET(request) {
         break;
       case "all":
       default:
-        from = null; // no lower bound
+        from = null;
         break;
     }
 
     const timeFilter = from ? { capture_time: { gte: from } } : {};
 
-    // --- 2) Get current user from token (if available) ---
+    // --- 2) Current user from JWT ---
     const token = request.cookies.get("token")?.value;
     let currentUserId = null;
 
     if (token) {
-      const user = verifyToken(token);
-      if (user) {
-        currentUserId = user.id;
+      try {
+        const user = verifyToken(token);
+        if (user) currentUserId = user.id;
+      } catch (err) {
+        console.warn("Invalid token in stats route:", err?.message);
       }
     }
 
-    // --- 3) Global counts (respecting time filter for videos) ---
-    const [totalUsers, totalVideosGlobal, storageAggGlobal] = await Promise.all([
-      prisma.user.count(),
-      prisma.video.count({
-        where: {
-          ...timeFilter,
-        },
-      }),
-      prisma.video.aggregate({
-        _sum: { file_size_mb: true },
-        where: {
-          ...timeFilter,
-        },
-      }),
-    ]);
-
-    const totalStorageMbGlobal = storageAggGlobal._sum.file_size_mb
-      ? Number(storageAggGlobal._sum.file_size_mb)
-      : 0;
-
-    // --- 4) Per-user video count + storage + recent videos (within range) ---
-    let userVideoCount = 0;
-    let userStorageMb = 0;
-    let recentVideos = [];
-
-    if (currentUserId) {
-      const [userVideoCountRes, userStorageAgg, recentVideosRes] = await Promise.all([
+    // --- 3) Global basics ---
+    const [totalUsers, totalVideosGlobal, globalStorageAgg] = await Promise.all(
+      [
+        prisma.user.count(),
         prisma.video.count({
           where: {
-            user_id: currentUserId,
             ...timeFilter,
           },
         }),
         prisma.video.aggregate({
           _sum: { file_size_mb: true },
           where: {
-            user_id: currentUserId,
             ...timeFilter,
           },
         }),
-        prisma.video.findMany({
-          where: {
-            user_id: currentUserId,
-            ...timeFilter,
-          },
-          orderBy: { capture_time: "desc" },
-          take: 5,
-          select: {
-            id: true,
-            video_name: true,
-            capture_time: true,
-            file_size_mb: true,
-          },
-        }),
-      ]);
+      ]
+    );
+
+    const totalStorageMbGlobal = globalStorageAgg._sum.file_size_mb
+      ? Number(globalStorageAgg._sum.file_size_mb)
+      : 0;
+
+    // --- 4) User specific counts (+ recent videos) if logged in ---
+    let userVideoCount = null;
+    let userStorageMb = null;
+    let recentVideos = [];
+
+    if (currentUserId) {
+      const [userVideoCountRes, userStorageAgg, recentVideosRes] =
+        await Promise.all([
+          prisma.video.count({
+            where: {
+              user_id: currentUserId,
+              ...timeFilter,
+            },
+          }),
+          prisma.video.aggregate({
+            _sum: { file_size_mb: true },
+            where: {
+              user_id: currentUserId,
+              ...timeFilter,
+            },
+          }),
+          prisma.video.findMany({
+            where: {
+              user_id: currentUserId,
+              ...timeFilter,
+            },
+            orderBy: { capture_time: "desc" },
+            take: 6,
+            select: {
+              id: true,
+              video_name: true,
+              capture_time: true,
+              file_size_mb: true,
+            },
+          }),
+        ]);
 
       userVideoCount = userVideoCountRes;
       userStorageMb = userStorageAgg._sum.file_size_mb
@@ -137,7 +142,7 @@ export async function GET(request) {
       recentVideos = recentVideosRes;
     }
 
-    // --- 5) Fetch videos with detection_result within range (user if available, else global) ---
+    // --- 5) Detection counts + labels for selected range ---
     const videosWithDetections = await prisma.video.findMany({
       where: {
         ...(currentUserId ? { user_id: currentUserId } : {}),
@@ -154,35 +159,33 @@ export async function GET(request) {
 
     for (const video of videosWithDetections) {
       let det = video.detection_result;
-      if (!det) continue;
 
-      // If stored as string, parse it
+      // handle JSON string
       if (typeof det === "string") {
         try {
           det = JSON.parse(det);
-        } catch (e) {
-          console.warn(
-            "Failed to parse detection_result JSON for video",
-            video.id,
-            "value:",
-            video.detection_result
-          );
-          continue;
+        } catch (err) {
+          det = null;
         }
       }
 
-      const detectionsArray = extractDetections(det);
-      if (!detectionsArray.length) continue;
+      const detections = extractDetections(det);
+      totalDetections += detections.length;
 
-      totalDetections += detectionsArray.length;
+      for (const d of detections) {
+        const label =
+          d.class ||
+          d.label ||
+          d.object ||
+          d.name ||
+          d.category ||
+          "Unknown";
 
-      for (const d of detectionsArray) {
-        const label = d.label || d.class || d.name || "unknown";
         labelCounts[label] = (labelCounts[label] || 0) + 1;
       }
     }
 
-    const denom = userVideoCount > 0 ? userVideoCount : totalVideosGlobal;
+    const denom = videosWithDetections.length || 0;
     const avgDetectionsPerVideo = denom > 0 ? totalDetections / denom : 0;
 
     const topLabels = Object.entries(labelCounts)
@@ -192,8 +195,8 @@ export async function GET(request) {
 
     return NextResponse.json({
       totalUsers,
-      totalVideos: userVideoCount || totalVideosGlobal,
-      totalStorageMb: userStorageMb || totalStorageMbGlobal,
+      totalVideos: userVideoCount ?? totalVideosGlobal,
+      totalStorageMb: userStorageMb ?? totalStorageMbGlobal,
       totalDetections,
       avgDetectionsPerVideo,
       topLabels,
