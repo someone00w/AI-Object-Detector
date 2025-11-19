@@ -95,9 +95,9 @@ export default function StatisticsPage() {
   /* --------------------- UI --------------------- */
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-slate-950/80 backdrop-blur border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
+      {/* header */}
+      <header className="sticky top-0 z-10 backdrop-blur bg-slate-950/80 border-b border-white/15">
+        <div className="max-w-7xl mx-auto px-8 py-5 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-white">Statistics</h1>
             <p className="text-slate-400 text-sm">
