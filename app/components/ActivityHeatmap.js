@@ -217,7 +217,7 @@ function HeatmapGrid({ data = [], zoomScale = 1, range = "week" }) {
         </span>
       </div>
 
-      <div className="mt-1 rounded-xl border border-slate-800/70 bg-gradient-to-b from-slate-950/80 via-slate-950/70 to-slate-950/40 px-3 py-3">
+      <div className="mt-1 rounded-xl border border-slate-800/70 bg-linear-to-b from-slate-950/80 via-slate-950/70 to-slate-950/40 px-3 py-3">
         {/* X axis labels */}
         <div className="mb-1 flex gap-1">
           {/* Spacer to align with Y-axis */}
@@ -347,7 +347,7 @@ export function ActivityHeatmap({ data = [], range }) {
 
   /* ---------- Normal card view ---------- */
   const card = (
-    <div className="w-full rounded-2xl border border-slate-800/60 bg-gradient-to-b from-slate-950/95 via-slate-950/90 to-slate-950/70 p-4 shadow-[0_18px_45px_rgba(0,0,0,0.65)]">
+    <div className="w-full rounded-2xl border border-slate-800/60 bg-linear-to-b from-slate-950/95 via-slate-950/90 to-slate-950/70 p-4 shadow-[0_18px_45px_rgba(0,0,0,0.65)]">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <h2 className="text-sm font-semibold text-slate-50 tracking-wide">
@@ -394,7 +394,7 @@ export function ActivityHeatmap({ data = [], range }) {
       ? createPortal(
           <div className="fixed inset-0 z-9999 flex flex-col bg-slate-950/95 text-white backdrop-blur-md">
             {/* Top bar */}
-            <div className="flex flex-col gap-4 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-950 to-slate-900 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 border-b border-slate-800 bg-linear-to-r from-slate-950 via-slate-950 to-slate-900 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-xl font-semibold tracking-tight">
                   Activity Heatmap — Fullscreen

@@ -130,7 +130,7 @@ export default function MenuPage() {
         {/* Background */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e293b,#020617_80%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(to_bottom_right,rgba(16,185,129,0.12),rgba(56,189,248,0.12))]" />
-        <div className="absolute inset-0 opacity-[0.05] bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[length:60px_60px]" />
+        <div className="absolute inset-0 opacity-[0.05] bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-size-[60px_60px]" />
 
         <div className="relative z-10 flex flex-col items-center gap-3">
           <span className="h-4 w-4 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin" />
@@ -160,7 +160,7 @@ export default function MenuPage() {
       {/* Background layers */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#020617,#020617_60%,#000000)]" />
       <div className="absolute inset-0 bg-[linear-gradient(to_bottom_right,rgba(56,189,248,0.18),rgba(249,115,22,0.12),rgba(16,185,129,0.16))]" />
-      <div className="absolute inset-0 opacity-[0.06] bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[length:60px_60px]" />
+      <div className="absolute inset-0 opacity-[0.06] bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-size-[60px_60px]" />
       <div className="pointer-events-none absolute -top-24 -left-10 h-72 w-72 rounded-full bg-emerald-400/15 blur-[140px]" />
       <div className="pointer-events-none absolute -bottom-24 -right-10 h-80 w-80 rounded-full bg-sky-500/20 blur-[150px]" />
 
@@ -199,7 +199,7 @@ export default function MenuPage() {
             <section className="mb-1">
               <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight mb-1">
                 Welcome back,{" "}
-                <span className="bg-gradient-to-r from-emerald-300 via-cyan-300 to-sky-400 bg-clip-text text-transparent">
+                <span className="bg-linear-to-r from-emerald-300 via-cyan-300 to-sky-400 bg-clip-text text-transparent">
                   {user.username}
                 </span>
                 .
@@ -341,7 +341,7 @@ export default function MenuPage() {
               {/* RIGHT COLUMN */}
               <div className="space-y-6 flex flex-col">
                 {/* Bigger 24h summary card */}
-                <div className="rounded-3xl border border-slate-800 bg-gradient-to-r from-slate-900/90 via-slate-900 to-slate-900/90 p-5 sm:p-6 shadow-[0_0_32px_rgba(0,0,0,0.7)]">
+                <div className="rounded-3xl border border-slate-800 bg-linear-to-r from-slate-900/90 via-slate-900 to-slate-900/90 p-5 sm:p-6 shadow-[0_0_32px_rgba(0,0,0,0.7)]">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
                       Past 24 Hours Stats
@@ -385,7 +385,7 @@ export default function MenuPage() {
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
                     Quick Actions
                   </p>
-                  <div className="grid gap-4 grid-cols-1 auto-rows-[minmax(0,1fr)]">
+                  <div className="grid gap-4 grid-cols-1 auto-rows-fr">
                     {menuItems.map((item, i) => (
                       <Link key={i} href={item.href}>
                         <motion.div
@@ -398,7 +398,7 @@ export default function MenuPage() {
                           />
                           <div className="relative flex items-center gap-3 mb-3">
                             <div
-                              className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${item.color} text-white shadow-[0_0_18px_rgba(56,189,248,0.5)]`}
+                              className={`flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br ${item.color} text-white shadow-[0_0_18px_rgba(56,189,248,0.5)]`}
                             >
                               {item.icon}
                             </div>
@@ -443,14 +443,14 @@ export default function MenuPage() {
                             className="group relative cursor-pointer overflow-hidden rounded-2xl border border-purple-500/40 bg-slate-950/90 p-5 shadow-[0_0_45px_rgba(147,51,234,0.45)] backdrop-blur-xl transition-all"
                           >
                             <div
-                              className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${item.color}`}
+                              className={`absolute inset-x-0 top-0 h-1 bg-linear-to-r ${item.color}`}
                             />
                             <div
-                              className={`pointer-events-none absolute inset-x-0 -top-24 h-32 bg-gradient-to-b ${item.color} opacity-40 blur-3xl`}
+                              className={`pointer-events-none absolute inset-x-0 -top-24 h-32 bg-linear-to-b ${item.color} opacity-40 blur-3xl`}
                             />
                             <div className="relative flex items-center gap-3 mb-3">
                               <div
-                                className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${item.color} text-white`}
+                                className={`flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br ${item.color} text-white`}
                               >
                                 {item.icon}
                               </div>

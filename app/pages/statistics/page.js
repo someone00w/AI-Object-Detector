@@ -21,7 +21,7 @@ function Tile({ title, value, subtitle, children }) {
         <p className="text-[11px] text-slate-400 mt-1">{subtitle}</p>
       )}
       {children && <div className="mt-4">{children}</div>}
-    </section>
+    </motion.section>
   );
 }
 
@@ -115,8 +115,10 @@ export default function StatisticsPage() {
             </Link>
             <SettingsPanel />
           </div>
-        </header>
+        </div>
+      </header>
 
+      <main className="max-w-7xl mx-auto px-8 py-6 space-y-6">
         {/* Range selector */}
         <section className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-800 bg-slate-950/80 px-4 py-3">
           <span className="text-xs text-slate-400">

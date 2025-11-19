@@ -171,7 +171,7 @@ export default function RecordingsPage() {
   /* ------------------ LOADING ------------------ */
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center text-white">
+      <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center text-white">
         Loading recordings…
       </div>
     );
@@ -179,7 +179,7 @@ export default function RecordingsPage() {
 
   /* ------------------ UI ------------------ */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white relative overflow-hidden">
+    <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 text-white relative overflow-hidden">
       {/* Content */}
       <div className="relative z-10 px-4 sm:px-6 py-6 flex flex-col max-w-6xl mx-auto">
         {/* Header */}
