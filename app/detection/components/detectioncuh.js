@@ -33,10 +33,7 @@ const Detectioncuh = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [userEmail, setUserEmail] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
-  const [settings, setSettings] = useState({
-    emailNotifications: true,
-    noPersonStopTime: 5
-  });
+  const [noPersonStopTime, setNoPersonStopTime] = useState(5);
 
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
@@ -47,29 +44,36 @@ const Detectioncuh = () => {
   const noPersonTimeoutRef = useRef(null);
   const recorderRef = useRef(null);
   const recordingStatsRef = useRef(null);
-  
-  const settingsRef = useRef(settings);
-  
-  useEffect(() => {
-    settingsRef.current = settings;
-  }, [settings]);
 
-  // ✅ FIX: Fetch user session on mount
+  // Fetch user session on mount
   useEffect(() => {
     fetchUserSession();
+    fetchNoPersonStopTime();
   }, []);
 
-  // Fetch settings from database on component mount
-  useEffect(() => {
-    if (userEmail) {
-      fetchSettings();
+  // Fetch noPersonStopTime from API
+  const fetchNoPersonStopTime = async () => {
+    try {
+      const response = await fetch('/api/settings');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.settings) {
+          setNoPersonStopTime(data.settings.noPersonStopTime);
+          console.log('⚙️ Stop time loaded:', data.settings.noPersonStopTime);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch settings:', error);
     }
-  }, [userEmail]);
+  };
 
+  // Listen for settings changes
   useEffect(() => {
     const handleSettingsChanged = (event) => {
-      console.log('⚙️ Settings changed event received:', event.detail);
-      setSettings(event.detail);
+      if (event.detail.noPersonStopTime) {
+        setNoPersonStopTime(event.detail.noPersonStopTime);
+        console.log('⚙️ Stop time updated:', event.detail.noPersonStopTime);
+      }
     };
 
     window.addEventListener('settingsChanged', handleSettingsChanged);
@@ -78,33 +82,6 @@ const Detectioncuh = () => {
       window.removeEventListener('settingsChanged', handleSettingsChanged);
     };
   }, []);
-
-  // Fetch settings from API
-  const fetchSettings = async () => {
-    try {
-      const response = await fetch('/api/settings');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.settings) {
-          setSettings(data.settings);
-          console.log('⚙️ Settings loaded from database:', data.settings);
-        }
-      } else {
-        console.error('Failed to fetch settings from database');
-      }
-    } catch (error) {
-      console.error('Failed to fetch settings:', error);
-    }
-  };
-
-  // Refresh settings periodically
-  useEffect(() => {
-    if (userEmail) {
-      fetchSettings();
-      const settingsInterval = setInterval(fetchSettings, 1000);
-      return () => clearInterval(settingsInterval);
-    }
-  }, [userEmail]);
 
   useEffect(() => {
     if (userEmail) {
@@ -135,35 +112,52 @@ const Detectioncuh = () => {
     }
   };
 
-  // ✅ FIX: Use settingsRef.current for real-time settings check
   const sendEmailNotification = async () => {
-    const currentSettings = settingsRef.current;
-    console.log('📧 Checking email notification settings:', currentSettings);
-    
-    if (!currentSettings.emailNotifications) {
-      console.log('📧 Email notifications disabled in settings - skipping');
-      return;
-    }
-    
     if (!userEmail) {
       console.log('⚠️ No user email available, skipping notification');
       return;
     }
     
     try {
-      console.log("📧 Sending alert email to:", userEmail);
-      const res = await fetch("/api/send-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: userEmail,
-          subject: "🚨 Person detected by your AI camera",
-          text: `Your AI detection system just detected a person at ${new Date().toLocaleString()}.`,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) console.log("✅ Email sent successfully!");
-      else console.error("❌ Email failed:", data.error);
+      console.log("📧 Fetching email recipients...");
+      
+      // Fetch all enabled email recipients for this user
+      const recipientsResponse = await fetch("/api/settings/email-recipients/notifications");
+      
+      if (!recipientsResponse.ok) {
+        console.error("❌ Failed to fetch recipients");
+        return;
+      }
+      
+      const recipientsData = await recipientsResponse.json();
+      const recipients = recipientsData.recipients || [];
+      
+      if (recipients.length === 0) {
+        console.log("📧 No email recipients found");
+        return;
+      }
+      
+      console.log(`📧 Sending alerts to ${recipients.length} recipient(s)`);
+      
+      // Send email to all recipients
+      for (const recipient of recipients) {
+        const res = await fetch("/api/send-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: recipient.email,
+            subject: "🚨 Person detected by your AI camera",
+            text: `Your AI detection system just detected a person at ${new Date().toLocaleString()}.`,
+          }),
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+          console.log(`✅ Email sent successfully to ${recipient.email}`);
+        } else {
+          console.error(`❌ Email failed for ${recipient.email}:`, data.error);
+        }
+      }
     } catch (err) {
       console.error("❌ Email error:", err);
     }
@@ -225,10 +219,9 @@ const Detectioncuh = () => {
           noPersonTimeoutRef.current = null;
         }
       } else if (!noPersonTimeoutRef.current) {
-        const stopDelay = settingsRef.current.noPersonStopTime * 1000;
         noPersonTimeoutRef.current = setTimeout(() => {
           stopRecording();
-        }, stopDelay);
+        }, noPersonStopTime * 1000);
       }
     }
   }
@@ -649,19 +642,19 @@ const Detectioncuh = () => {
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
-                    Stops if no person seen for {settings.noPersonStopTime} second{settings.noPersonStopTime !== 1 ? 's' : ''}.
+                    Stops if no person seen for {noPersonStopTime} second{noPersonStopTime !== 1 ? 's' : ''}.
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
                     Saves clip to your recordings page.
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-                    Email alerts {settings.emailNotifications ? 'enabled' : 'disabled'}.
-                  </li>
-                  <li className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-indigo-300" />
                     Tracks unique people per clip.
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-purple-300" />
+                    Alerts sent to all configured recipients.
                   </li>
                 </ul>
               </div>

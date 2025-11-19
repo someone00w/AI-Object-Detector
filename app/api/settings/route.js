@@ -21,7 +21,6 @@ export async function GET(request) {
       settings = await prisma.userSettings.create({
         data: {
           user_id: user.id,
-          email_notifications: true,
           no_person_stop_time: 5
         }
       })
@@ -30,7 +29,6 @@ export async function GET(request) {
     return NextResponse.json({
       success: true,
       settings: {
-        emailNotifications: settings.email_notifications,
         noPersonStopTime: settings.no_person_stop_time
       }
     })
@@ -53,10 +51,10 @@ export async function POST(request) {
     const user = authResult.user
 
     const body = await request.json()
-    const { emailNotifications, noPersonStopTime } = body
+    const { noPersonStopTime } = body
 
     // Validate input
-    if (typeof emailNotifications !== 'boolean' || typeof noPersonStopTime !== 'number') {
+    if (typeof noPersonStopTime !== 'number') {
       return NextResponse.json(
         { error: 'Invalid settings format' },
         { status: 400 }
@@ -74,13 +72,11 @@ export async function POST(request) {
     const settings = await prisma.userSettings.upsert({
       where: { user_id: user.id },
       update: {
-        email_notifications: emailNotifications,
         no_person_stop_time: noPersonStopTime,
         updated_at: new Date()
       },
       create: {
         user_id: user.id,
-        email_notifications: emailNotifications,
         no_person_stop_time: noPersonStopTime
       }
     })
@@ -88,7 +84,6 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       settings: {
-        emailNotifications: settings.email_notifications,
         noPersonStopTime: settings.no_person_stop_time
       }
     })
