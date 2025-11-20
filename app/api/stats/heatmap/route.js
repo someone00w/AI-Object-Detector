@@ -6,7 +6,6 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const range = searchParams.get("range") || "week";
-
     console.log(`🔍 Heatmap data for range="${range}"`);
 
     // 1) Time window
@@ -36,23 +35,32 @@ export async function GET(request) {
 
     // 2) Current user (if logged in)
     const token = request.cookies.get("token")?.value;
-    let currentUserId = null;
+    let currentUser = null;
 
     if (token) {
       try {
-        const user = verifyToken(token);
-        if (user) currentUserId = user.id;
+        currentUser = verifyToken(token);
       } catch (err) {
         console.warn("Invalid token in heatmap route:", err?.message);
       }
     }
 
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: "Not authenticated" },
+        { status: 401 }
+      );
+    }
+
+    const isAdmin = currentUser.role === 1;
+
+    // 3) Build where clause - admin sees all, regular user sees only their data
     const whereClause = {
-      ...(currentUserId ? { user_id: currentUserId } : {}),
+      ...(isAdmin ? {} : { user_id: currentUser.id }),
       ...timeFilter,
     };
 
-    // 3) Fetch videos for this window
+    // 4) Fetch videos for this window
     const videos = await prisma.video.findMany({
       where: whereClause,
       select: {
@@ -66,7 +74,7 @@ export async function GET(request) {
 
     for (const video of videos) {
       let det = video.detection_result;
-
+      
       if (typeof det === "string") {
         try {
           det = JSON.parse(det);
@@ -76,7 +84,7 @@ export async function GET(request) {
       }
 
       let count = 0;
-
+      
       // Try to count detections the same way as stats route
       if (det && typeof det === "object") {
         if (typeof det.totalDetections === "number") {
@@ -101,6 +109,7 @@ export async function GET(request) {
       success: true,
       data: heatmapData,
       range,
+      isAdmin, // Include this so frontend knows context
     });
   } catch (error) {
     console.error("❌ Heatmap error:", error);

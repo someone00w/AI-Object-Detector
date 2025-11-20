@@ -65,87 +65,72 @@ export async function GET(request) {
 
     // --- 2) Current user from JWT ---
     const token = request.cookies.get("token")?.value;
-    let currentUserId = null;
+    let currentUser = null;
 
     if (token) {
       try {
-        const user = verifyToken(token);
-        if (user) currentUserId = user.id;
+        currentUser = verifyToken(token);
       } catch (err) {
         console.warn("Invalid token in stats route:", err?.message);
       }
     }
 
-    // --- 3) Global basics ---
-    const [totalUsers, totalVideosGlobal, globalStorageAgg] = await Promise.all(
-      [
-        prisma.user.count(),
-        prisma.video.count({
-          where: {
-            ...timeFilter,
-          },
-        }),
-        prisma.video.aggregate({
-          _sum: { file_size_mb: true },
-          where: {
-            ...timeFilter,
-          },
-        }),
-      ]
-    );
-
-    const totalStorageMbGlobal = globalStorageAgg._sum.file_size_mb
-      ? Number(globalStorageAgg._sum.file_size_mb)
-      : 0;
-
-    // --- 4) User specific counts (+ recent videos) if logged in ---
-    let userVideoCount = null;
-    let userStorageMb = null;
-    let recentVideos = [];
-
-    if (currentUserId) {
-      const [userVideoCountRes, userStorageAgg, recentVideosRes] =
-        await Promise.all([
-          prisma.video.count({
-            where: {
-              user_id: currentUserId,
-              ...timeFilter,
-            },
-          }),
-          prisma.video.aggregate({
-            _sum: { file_size_mb: true },
-            where: {
-              user_id: currentUserId,
-              ...timeFilter,
-            },
-          }),
-          prisma.video.findMany({
-            where: {
-              user_id: currentUserId,
-              ...timeFilter,
-            },
-            orderBy: { capture_time: "desc" },
-            take: 6,
-            select: {
-              id: true,
-              video_name: true,
-              capture_time: true,
-              file_size_mb: true,
-            },
-          }),
-        ]);
-
-      userVideoCount = userVideoCountRes;
-      userStorageMb = userStorageAgg._sum.file_size_mb
-        ? Number(userStorageAgg._sum.file_size_mb)
-        : 0;
-      recentVideos = recentVideosRes;
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: "Not authenticated" },
+        { status: 401 }
+      );
     }
 
-    // --- 5) Detection counts + labels for selected range ---
+    const isAdmin = currentUser.role === 1;
+
+    // --- 3) Build where clause based on role ---
+    // Admin sees all users' data, regular user sees only their own
+    const userFilter = isAdmin ? {} : { user_id: currentUser.id };
+
+    // --- 4) Global basics (respecting user filter) ---
+    const [totalUsers, totalVideos, storageAgg] = await Promise.all([
+      // Only admins see total user count, regular users see just themselves
+      isAdmin ? prisma.user.count() : Promise.resolve(1),
+      prisma.video.count({
+        where: {
+          ...userFilter,
+          ...timeFilter,
+        },
+      }),
+      prisma.video.aggregate({
+        _sum: { file_size_mb: true },
+        where: {
+          ...userFilter,
+          ...timeFilter,
+        },
+      }),
+    ]);
+
+    const totalStorageMb = storageAgg._sum.file_size_mb
+      ? Number(storageAgg._sum.file_size_mb)
+      : 0;
+
+    // --- 5) Recent videos ---
+    const recentVideos = await prisma.video.findMany({
+      where: {
+        ...userFilter,
+        ...timeFilter,
+      },
+      orderBy: { capture_time: "desc" },
+      take: 6,
+      select: {
+        id: true,
+        video_name: true,
+        capture_time: true,
+        file_size_mb: true,
+      },
+    });
+
+    // --- 6) Detection counts + labels for selected range ---
     const videosWithDetections = await prisma.video.findMany({
       where: {
-        ...(currentUserId ? { user_id: currentUserId } : {}),
+        ...userFilter,
         ...timeFilter,
       },
       select: {
@@ -195,13 +180,14 @@ export async function GET(request) {
 
     return NextResponse.json({
       totalUsers,
-      totalVideos: userVideoCount ?? totalVideosGlobal,
-      totalStorageMb: userStorageMb ?? totalStorageMbGlobal,
+      totalVideos,
+      totalStorageMb,
       totalDetections,
       avgDetectionsPerVideo,
       topLabels,
       recentVideos,
       range,
+      isAdmin, // Include this so frontend knows context
     });
   } catch (err) {
     console.error("Error in stats route:", err);
