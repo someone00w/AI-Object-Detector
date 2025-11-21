@@ -394,7 +394,7 @@ export default function MenuPage() {
                           className="group relative h-full cursor-pointer overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/90 p-5 shadow-[0_0_30px_rgba(0,0,0,0.6)] backdrop-blur-xl transition-all"
                         >
                           <div
-                            className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${item.color}`}
+                            className={`absolute inset-x-0 top-0 h-1 bg-linear-to-r ${item.color}`}
                           />
                           <div className="relative flex items-center gap-3 mb-3">
                             <div
