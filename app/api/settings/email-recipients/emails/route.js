@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/response'
+import { NextResponse } from 'next/server'
 import { requireAuth } from '@/app/lib/apiAuth'
 import { prisma } from '@/app/lib/prisma'
 import { sanitizeEmail } from '@/app/lib/sanitize'

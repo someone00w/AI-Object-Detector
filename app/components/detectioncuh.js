@@ -49,6 +49,7 @@ const Detectioncuh = () => {
   // Fetch user session on mount
   useEffect(() => {
     console.log('🔍 Debug - loadingUser:', loadingUser, 'webcamReady:', webcamReady);
+    console.log('🔍 Debug - loadingUser:', loadingUser, 'webcamReady:', webcamReady);
     fetchUserSession();
     fetchNoPersonStopTime();
   }, []);
@@ -88,6 +89,7 @@ const Detectioncuh = () => {
   // Start AI model when webcam is ready AND user session is loaded
   useEffect(() => {
     console.log('🔍 Debug - Checking if should start AI:', { webcamReady, loadingUser });
+    console.log('🔍 Debug - Checking if should start AI:', { webcamReady, loadingUser });
     if (webcamReady && !loadingUser) {
       console.log('✅ Starting AI model - Webcam ready and user session loaded');
       runCoco();
@@ -100,6 +102,8 @@ const Detectioncuh = () => {
   }, [webcamReady, loadingUser]);
  
   // Webcam ready handler
+  const handleWebcamReady = (stream) => {
+    console.log('📹 onUserMedia fired - Webcam is ready', stream);
   const handleWebcamReady = (stream) => {
     console.log('📹 onUserMedia fired - Webcam is ready', stream);
     setWebcamReady(true);
@@ -169,6 +173,7 @@ const Detectioncuh = () => {
       console.error('❌ Failed to fetch user session:', error);
       setUserEmail(null);
     } finally {
+      // FIX: Always set loadingUser to false
       setLoadingUser(false);
     }
   };
@@ -224,8 +229,10 @@ const Detectioncuh = () => {
  
   async function runCoco() {
     console.log('🔍 runCoco called');
+    console.log('🔍 runCoco called');
     setIsLoading(true);
     try {
+      console.log('🔍 Waiting for TensorFlow...');
       console.log('🔍 Waiting for TensorFlow...');
       await tf.ready();
       console.log('🧠 TensorFlow ready');
@@ -538,6 +545,7 @@ const Detectioncuh = () => {
       const formData = new FormData();
       formData.append("video", blob, "recording.webm");
       formData.append("videoName", `person_detected_${new Date().toISOString().replace(/[:.]/g, '-')}`);
+      formData.append("videoName", `person_detected_${new Date().toISOString().replace(/[:.]/g, '-')}`);
       formData.append("detectionResult", JSON.stringify(detectionSummary));
  
       console.log("📤 Uploading video...", {
@@ -557,7 +565,21 @@ const Detectioncuh = () => {
           const data = await response.json();
           console.log("✅ Video saved successfully:", data);
           alert("Recording saved successfully!");
+          console.log("✅ Video saved successfully:", data);
+          alert("Recording saved successfully!");
         } else {
+          let errorData;
+          try {
+            errorData = await response.json();
+          } catch (e) {
+            errorData = { error: "Failed to parse error response", status: response.status };
+          }
+          console.error("❌ Failed to save video:", {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData
+          });
+          alert(`Failed to save recording: ${errorData.error || 'Unknown error'}`);
           let errorData;
           try {
             errorData = await response.json();
@@ -572,6 +594,12 @@ const Detectioncuh = () => {
           alert(`Failed to save recording: ${errorData.error || 'Unknown error'}`);
         }
       } catch (error) {
+        console.error("❌ Upload error:", error);
+        console.error("Error details:", {
+          message: error.message,
+          stack: error.stack
+        });
+        alert(`Upload failed: ${error.message}`);
         console.error("❌ Upload error:", error);
         console.error("Error details:", {
           message: error.message,
@@ -606,6 +634,7 @@ const Detectioncuh = () => {
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="flex flex-col items-center">
           <div className="animate-spin rounded-full h-14 w-14 border-t-4 border-emerald-400 border-opacity-80 mb-4" />
+          <div className="text-white text-xl">Loading session...</div>
           <div className="text-white text-xl">Loading session...</div>
           <p className="text-slate-400 text-sm mt-2">This may take a moment...</p>
         </div>
@@ -672,6 +701,13 @@ const Detectioncuh = () => {
                 autoPlay
                 playsInline
                 onUserMedia={handleWebcamReady}
+                onUserMediaError={handleWebcamError}
+                videoConstraints={{
+                  facingMode: "user",
+                  width: { ideal: 1280 },
+                  height: { ideal: 720 }
+                }}
+                screenshotFormat="image/jpeg"
                 onUserMediaError={handleWebcamError}
                 videoConstraints={{
                   facingMode: "user",
