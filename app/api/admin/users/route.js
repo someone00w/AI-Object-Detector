@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/app/lib/apiAuth'
 import { prisma } from '@/app/lib/prisma'
+import { validateCsrfMiddleware } from '@/app/lib/csrf'
 
 // GET all users (Admin only)
 export async function GET(request) {
@@ -38,6 +39,12 @@ export async function GET(request) {
 
 // DELETE user (Admin only)
 export async function DELETE(request) {
+  // CSRF validation
+  const csrfValidation = validateCsrfMiddleware(request)
+  if (!csrfValidation.valid) {
+    return csrfValidation.error
+  }
+  
   try {
     // Check if user is admin
     const { user, error } = requireAdmin(request)

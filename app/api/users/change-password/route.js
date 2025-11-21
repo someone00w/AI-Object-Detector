@@ -3,8 +3,15 @@ import { NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/app/lib/apiAuth'
 import { prisma } from '@/app/lib/prisma'
 import { verifyPassword, hashPassword, validatePassword } from '@/app/lib/auth'
+import { validateCsrfMiddleware } from '@/app/lib/csrf'
 
 export async function POST(request) {
+  // CSRF validation
+  const csrfValidation = validateCsrfMiddleware(request)
+  if (!csrfValidation.valid) {
+    return csrfValidation.error
+  }
+  
   try {
     const user = getUserFromRequest(request)
     

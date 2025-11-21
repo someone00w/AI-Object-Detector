@@ -4,6 +4,7 @@ import { useAuth } from '@/app/lib/useAuth'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
+import { csrfFetch } from '@/app/lib/csrfHelper'
 
 export default function ChangeEmailPage() {
   const { user, loading } = useAuth()
@@ -19,7 +20,7 @@ export default function ChangeEmailPage() {
     setSubmitting(true)
 
     try {
-      const response = await fetch('/api/users/change-email', {
+      const response = await csrfFetch('/api/users/change-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ newEmail, password })

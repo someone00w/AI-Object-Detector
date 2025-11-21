@@ -4,8 +4,15 @@ import { getUserFromRequest } from '@/app/lib/apiAuth'
 import { prisma } from '@/app/lib/prisma'
 import { verifyPassword, validateEmail } from '@/app/lib/auth'
 import { generateVerificationToken, generateTokenExpiry, sendVerificationEmail } from '@/app/lib/tokens'
+import { validateCsrfMiddleware } from '@/app/lib/csrf'
 
 export async function POST(request) {
+  // CSRF validation
+  const csrfValidation = validateCsrfMiddleware(request)
+  if (!csrfValidation.valid) {
+    return csrfValidation.error
+  }
+  
   try {
     const user = getUserFromRequest(request)
     

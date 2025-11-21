@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAuth } from '@/app/lib/apiAuth'
 import { prisma } from '@/app/lib/prisma'
 import { sanitizeEmail } from '@/app/lib/sanitize'
+import { validateCsrfMiddleware } from '@/app/lib/csrf'
 
 // GET - Fetch user's email recipients
 export async function GET(request) {
@@ -37,6 +38,12 @@ export async function GET(request) {
 
 // POST - Add new email recipient
 export async function POST(request) {
+  // CSRF validation
+  const csrfValidation = validateCsrfMiddleware(request)
+  if (!csrfValidation.valid) {
+    return csrfValidation.error
+  }
+  
   try {
     const authResult = requireAuth(request)
     if (authResult.error) {
@@ -101,6 +108,12 @@ export async function POST(request) {
 
 // PUT - Update email recipient
 export async function PUT(request) {
+  // CSRF validation
+  const csrfValidation = validateCsrfMiddleware(request)
+  if (!csrfValidation.valid) {
+    return csrfValidation.error
+  }
+  
   try {
     const authResult = requireAuth(request)
     if (authResult.error) {
@@ -196,6 +209,12 @@ export async function PUT(request) {
 
 // DELETE - Remove email recipient
 export async function DELETE(request) {
+  // CSRF validation
+  const csrfValidation = validateCsrfMiddleware(request)
+  if (!csrfValidation.valid) {
+    return csrfValidation.error
+  }
+  
   try {
     const authResult = requireAuth(request)
     if (authResult.error) {

@@ -3,6 +3,7 @@
 import { useAuth } from '@/app/lib/useAuth'
 import { useEffect, useState } from 'react'
 import { TrashIcon, PencilIcon } from '@heroicons/react/24/outline'
+import { csrfFetch } from '@/app/lib/csrfHelper'
 
 export default function AdminPage() {
   const { user, loading } = useAuth({ requireAdmin: true })
@@ -38,7 +39,7 @@ export default function AdminPage() {
     }
 
     try {
-      const response = await fetch(`/api/admin/users?id=${userId}`, {
+      const response = await csrfFetch(`/api/admin/users?id=${userId}`, {
         method: 'DELETE'
       })
 
@@ -57,7 +58,7 @@ export default function AdminPage() {
 
   const handleUpdateRole = async (userId) => {
     try {
-      const response = await fetch('/api/admin/users/update-role', {
+      const response = await csrfFetch('/api/admin/users/update-role', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, newRole })

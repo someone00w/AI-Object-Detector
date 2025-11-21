@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { csrfFetch, invalidateCsrfToken } from "@/app/lib/csrfHelper";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -21,7 +22,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/register", {
+      const response = await csrfFetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -30,7 +31,12 @@ export default function RegisterPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Registration failed");
+        if (response.status === 403 && data.error?.includes('CSRF')) {
+          invalidateCsrfToken();
+          setError("Security token expired. Please try again.");
+        } else {
+          setError(data.error || "Registration failed");
+        }
         return;
       }
 

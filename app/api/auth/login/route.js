@@ -3,8 +3,15 @@ import { prisma } from '@/app/lib/prisma'
 import { verifyPassword } from '@/app/lib/auth'
 import { generateToken } from '@/app/lib/jwt'
 import { rateLimitMiddleware } from '@/app/lib/rateLimit'
+import { validateCsrfMiddleware } from '@/app/lib/csrf'
 
 export async function POST(request) {
+  // CSRF validation
+  const csrfValidation = validateCsrfMiddleware(request)
+  if (!csrfValidation.valid) {
+    return csrfValidation.error
+  }
+  
   // Rate limiting: 5 login attempts per minute
   const rateLimitResult = rateLimitMiddleware(request, 5, 60000)
   if (rateLimitResult.allowed !== true) {

@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { validateCsrfMiddleware } from '@/app/lib/csrf';
 
 export async function POST(req) {
+  // CSRF validation
+  const csrfValidation = validateCsrfMiddleware(req)
+  if (!csrfValidation.valid) {
+    return csrfValidation.error
+  }
+  
   try {
     const { to, subject, text } = await req.json();
 

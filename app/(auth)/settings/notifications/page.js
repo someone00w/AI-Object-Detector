@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { PencilIcon, TrashIcon, XMarkIcon, CheckIcon, PlusIcon, EnvelopeIcon } from '@heroicons/react/24/outline'
 import SettingsPanel from '@/app/components/SettingsPanel'
 import { useState, useEffect } from 'react'
+import { csrfFetch } from '@/app/lib/csrfHelper'
 
 export default function NotificationsPage() {
   const { user, loading } = useAuth()
@@ -39,7 +40,7 @@ export default function NotificationsPage() {
         
         if (!hasUserEmail) {
           // Add user's email as default recipient
-          await fetch('/api/settings/email-recipients/emails', {
+          await csrfFetch('/api/settings/email-recipients/emails', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: user.email, enabled: true })
@@ -100,7 +101,7 @@ export default function NotificationsPage() {
     }
 
     try {
-      const response = await fetch('/api/settings/email-recipients/emails', {
+      const response = await csrfFetch('/api/settings/email-recipients/emails', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -148,7 +149,7 @@ export default function NotificationsPage() {
     }
 
     try {
-      const response = await fetch('/api/settings/email-recipients/emails', {
+      const response = await csrfFetch('/api/settings/email-recipients/emails', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -180,7 +181,7 @@ export default function NotificationsPage() {
 
   const handleToggleEmail = async (id, currentStatus) => {
     try {
-      const response = await fetch('/api/settings/email-recipients/emails', {
+      const response = await csrfFetch('/api/settings/email-recipients/emails', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -216,7 +217,7 @@ export default function NotificationsPage() {
     }
 
     try {
-      const response = await fetch('/api/settings/email-recipients/emails', {
+      const response = await csrfFetch('/api/settings/email-recipients/emails', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })

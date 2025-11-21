@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/app/lib/apiAuth'
 import { prisma } from '@/app/lib/prisma'
+import { validateCsrfMiddleware } from '@/app/lib/csrf'
 
 // GET - Fetch user settings
 export async function GET(request) {
@@ -43,6 +44,12 @@ export async function GET(request) {
 
 // POST - Update user settings
 export async function POST(request) {
+  // CSRF validation
+  const csrfValidation = validateCsrfMiddleware(request)
+  if (!csrfValidation.valid) {
+    return csrfValidation.error
+  }
+  
   try {
     const authResult = requireAuth(request)
     if (authResult.error) {

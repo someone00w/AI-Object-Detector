@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { csrfFetch } from '@/app/lib/csrfHelper'
 
 export default function VerifyEmailPage() {
   const router = useRouter()
@@ -24,7 +25,7 @@ export default function VerifyEmailPage() {
 
   const verifyEmail = async (token) => {
     try {
-      const response = await fetch('/api/auth/verify-email', {
+      const response = await csrfFetch('/api/auth/verify-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token })

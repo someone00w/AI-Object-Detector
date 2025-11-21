@@ -4,8 +4,15 @@ import { prisma } from '@/app/lib/prisma'
 import { unlink } from 'fs/promises'
 import path from 'path'
 import bcrypt from 'bcryptjs'
+import { validateCsrfMiddleware } from '@/app/lib/csrf'
 
 export async function DELETE(request) {
+  // CSRF validation
+  const csrfValidation = validateCsrfMiddleware(request)
+  if (!csrfValidation.valid) {
+    return csrfValidation.error
+  }
+  
   try {
     // Verify authentication
     const token = request.cookies.get('token')?.value

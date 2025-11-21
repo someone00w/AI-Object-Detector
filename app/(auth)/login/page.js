@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { csrfFetch, invalidateCsrfToken } from "@/app/lib/csrfHelper";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,7 +29,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
+      const response = await csrfFetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -37,7 +38,12 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Login failed");
+        if (response.status === 403 && data.error?.includes('CSRF')) {
+          invalidateCsrfToken();
+          setError("Security token expired. Please try again.");
+        } else {
+          setError(data.error || "Login failed");
+        }
         return;
       }
 

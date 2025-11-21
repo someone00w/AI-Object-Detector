@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server'
 import { verifyToken } from '@/app/lib/jwt'
 import { prisma } from '@/app/lib/prisma'
+import { validateCsrfMiddleware } from '@/app/lib/csrf'
 
 export async function PUT(request) {
+  // CSRF validation
+  const csrfValidation = validateCsrfMiddleware(request)
+  if (!csrfValidation.valid) {
+    return csrfValidation.error
+  }
+  
   try {
     // Verify authentication
     const token = request.cookies.get('token')?.value

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { XMarkIcon, UserCircleIcon, VideoCameraIcon, ArrowRightOnRectangleIcon, Cog6ToothIcon, ArrowPathIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
+import { csrfFetch } from '@/app/lib/csrfHelper'
 
 export default function SettingsPanel() {
   const router = useRouter()
@@ -54,7 +55,7 @@ export default function SettingsPanel() {
     // Save settings to database
   const saveSettings = async () => {
     try {
-      const response = await fetch('/api/settings', {
+      const response = await csrfFetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(tempSettings)
@@ -102,7 +103,7 @@ export default function SettingsPanel() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' })
+      await csrfFetch('/api/auth/logout', { method: 'POST' })
       router.push('/')
     } catch (error) {
       console.error('Logout failed:', error)

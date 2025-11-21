@@ -8,6 +8,7 @@ import { renderPredictions } from "@/utils/render-predictions";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import SettingsPanel from "@/app/components/SettingsPanel";
+import { csrfFetch, getCsrfToken } from "@/app/lib/csrfHelper";
  
 let detectInterval;
  
@@ -200,7 +201,7 @@ const Detectioncuh = () => {
      
       // Send email to all recipients
       for (const recipient of recipients) {
-        const res = await fetch("/api/send-email", {
+        const res = await csrfFetch("/api/send-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -544,14 +545,18 @@ const Detectioncuh = () => {
         blobSize: blob.size,
         detectionSummary
       });
- 
+
       try {
+        const csrfToken = await getCsrfToken(true);
+        
         const response = await fetch("/api/videos/save", {
           method: "POST",
+          headers: {
+            'X-CSRF-Token': csrfToken
+          },
+          credentials: 'include',
           body: formData,
-        });
- 
-        console.log("📡 Upload response status:", response.status);
+        });        console.log("📡 Upload response status:", response.status);
  
         if (response.ok) {
           const data = await response.json();
@@ -564,6 +569,32 @@ const Detectioncuh = () => {
           } catch (e) {
             errorData = { error: "Failed to parse error response", status: response.status };
           }
+          
+          // If CSRF token expired, retry once with a fresh token
+          if (response.status === 403 && errorData.error?.includes('CSRF')) {
+            console.log("🔄 CSRF token expired, retrying with fresh token...");
+            try {
+              const freshToken = await getCsrfToken(true);
+              const retryResponse = await fetch("/api/videos/save", {
+                method: "POST",
+                headers: {
+                  'X-CSRF-Token': freshToken
+                },
+                credentials: 'include',
+                body: formData,
+              });
+              
+              if (retryResponse.ok) {
+                const retryData = await retryResponse.json();
+                console.log("✅ Video saved successfully on retry:", retryData);
+                alert("Recording saved successfully!");
+                return; // Exit successfully
+              }
+            } catch (retryError) {
+              console.error("❌ Retry failed:", retryError);
+            }
+          }
+          
           console.error("❌ Failed to save video:", {
             status: response.status,
             statusText: response.statusText,

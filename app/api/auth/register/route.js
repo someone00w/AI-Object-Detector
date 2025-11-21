@@ -4,8 +4,15 @@ import { hashPassword } from '@/app/lib/auth'
 import { generateToken } from '@/app/lib/jwt'
 import { generateVerificationToken, generateTokenExpiry, sendVerificationEmail } from '@/app/lib/tokens'
 import { sanitizeEmail, sanitizeUsername, sanitizeText } from '@/app/lib/sanitize'
+import { validateCsrfMiddleware } from '@/app/lib/csrf'
 
 export async function POST(request) {
+  // CSRF validation
+  const csrfValidation = validateCsrfMiddleware(request)
+  if (!csrfValidation.valid) {
+    return csrfValidation.error
+  }
+  
   try {
     const body = await request.json()
     const { username, email, password, full_name } = body

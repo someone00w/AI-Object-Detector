@@ -11,6 +11,7 @@ import {
   CheckIcon,
 } from "@heroicons/react/24/outline";
 import SettingsPanel from "@/app/components/SettingsPanel";
+import { csrfFetch } from "@/app/lib/csrfHelper";
  
 export default function RecordingsPage() {
   const router = useRouter();
@@ -75,15 +76,13 @@ export default function RecordingsPage() {
  
   const handleSaveEdit = async (videoId) => {
     if (!editName.trim()) return alert("Video name cannot be empty");
- 
+
     try {
-      const response = await fetch("/api/videos/update", {
+      const response = await csrfFetch("/api/videos/update", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: videoId, video_name: editName }),
-      });
- 
-      if (!response.ok) {
+      });      if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || "Failed to update video");
       }
@@ -122,15 +121,13 @@ export default function RecordingsPage() {
     }
  
     setDeleting(videoToDelete);
- 
+
     try {
-      const response = await fetch("/api/videos/delete", {
+      const response = await csrfFetch("/api/videos/delete", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: videoToDelete, password: passwordInput }),
-      });
- 
-      const data = await response.json();
+      });      const data = await response.json();
  
       if (!response.ok) {
         if (response.status === 401) {

@@ -5,11 +5,18 @@ import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
 import { sanitizeVideoName } from '@/app/lib/sanitize'
+import { validateCsrfMiddleware } from '@/app/lib/csrf'
 
 const ALLOWED_VIDEO_TYPES = ['video/webm', 'video/mp4', 'video/x-matroska']
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024 // 500MB
 
 export async function POST(request) {
+  // CSRF validation
+  const csrfValidation = validateCsrfMiddleware(request)
+  if (!csrfValidation.valid) {
+    return csrfValidation.error
+  }
+  
   try {
     console.log('📥 Received video save request')
     
