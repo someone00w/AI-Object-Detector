@@ -29,12 +29,12 @@ function iou(a, b) {
 }
 
 const Detectioncuh = () => {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // Changed: Start as false, will be true only when loading model
   const [isRecording, setIsRecording] = useState(false);
   const [userEmail, setUserEmail] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [noPersonStopTime, setNoPersonStopTime] = useState(5);
-  const [webcamReady, setWebcamReady] = useState(false); // NEW STATE
+  const [webcamReady, setWebcamReady] = useState(false);
 
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
@@ -48,6 +48,7 @@ const Detectioncuh = () => {
 
   // Fetch user session on mount
   useEffect(() => {
+    console.log('🔍 Debug - loadingUser:', loadingUser, 'webcamReady:', webcamReady);
     fetchUserSession();
     fetchNoPersonStopTime();
   }, []);
@@ -86,6 +87,7 @@ const Detectioncuh = () => {
 
   // Start AI model when webcam is ready AND user session is loaded
   useEffect(() => {
+    console.log('🔍 Debug - Checking if should start AI:', { webcamReady, loadingUser });
     if (webcamReady && !loadingUser) {
       console.log('✅ Starting AI model - Webcam ready and user session loaded');
       runCoco();
@@ -98,10 +100,58 @@ const Detectioncuh = () => {
   }, [webcamReady, loadingUser]);
 
   // Webcam ready handler
-  const handleWebcamReady = () => {
-    console.log('📹 Webcam is ready');
+  const handleWebcamReady = (stream) => {
+    console.log('📹 onUserMedia fired - Webcam is ready', stream);
     setWebcamReady(true);
   };
+
+  // Handle webcam errors
+  const handleWebcamError = (error) => {
+    console.error('❌ Webcam error:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+  };
+
+  // Additional check: Monitor webcam ref changes
+  useEffect(() => {
+    console.log('🎥 Starting webcam polling...');
+    let pollCount = 0;
+    
+    const checkWebcam = setInterval(() => {
+      pollCount++;
+      console.log(`🎥 Poll #${pollCount} - webcamRef.current exists:`, !!webcamRef.current);
+      
+      if (webcamRef.current?.video) {
+        const video = webcamRef.current.video;
+        console.log('🎥 Webcam state:', {
+          readyState: video.readyState,
+          videoWidth: video.videoWidth,
+          videoHeight: video.videoHeight,
+          paused: video.paused,
+          srcObject: !!video.srcObject
+        });
+        
+        if (video.readyState === 4 && video.videoWidth > 0 && !webcamReady) {
+          console.log('📹 Webcam detected as ready via polling');
+          setWebcamReady(true);
+          clearInterval(checkWebcam);
+        }
+      } else {
+        console.log('⏳ Waiting for webcam ref...');
+      }
+    }, 1000);
+
+    // Cleanup after 15 seconds
+    const timeout = setTimeout(() => {
+      console.log('⚠️ Webcam polling timeout after 15 seconds');
+      clearInterval(checkWebcam);
+    }, 15000);
+    
+    return () => {
+      clearInterval(checkWebcam);
+      clearTimeout(timeout);
+    };
+  }, [webcamReady]);
 
   // Fetch logged-in user's email from session
   const fetchUserSession = async () => {
@@ -119,6 +169,7 @@ const Detectioncuh = () => {
       console.error('❌ Failed to fetch user session:', error);
       setUserEmail(null);
     } finally {
+      // FIX: Always set loadingUser to false
       setLoadingUser(false);
     }
   };
@@ -173,12 +224,17 @@ const Detectioncuh = () => {
   };
 
   async function runCoco() {
+    console.log('🔍 runCoco called');
     setIsLoading(true);
     try {
+      console.log('🔍 Waiting for TensorFlow...');
       await tf.ready();
       console.log('🧠 TensorFlow ready');
+      
+      console.log('🔍 Loading COCO-SSD model...');
       const net = await cocoSSDLoad();
       console.log('✅ COCO-SSD model loaded');
+      
       setIsLoading(false);
 
       detectInterval = setInterval(() => {
@@ -474,7 +530,8 @@ const Detectioncuh = () => {
           },
           classesSeen: classes,
           perClassFrameCounts: perClass,
-          tracks: tracksSummary
+          tracks: tracksSummary,
+          totalDetections: uniquePersons // Add this for stats consistency
         };
       };
 
@@ -482,7 +539,13 @@ const Detectioncuh = () => {
 
       const formData = new FormData();
       formData.append("video", blob, "recording.webm");
+      formData.append("videoName", `person_detected_${new Date().toISOString().replace(/[:.]/g, '-')}`);
       formData.append("detectionResult", JSON.stringify(detectionSummary));
+
+      console.log("📤 Uploading video...", {
+        blobSize: blob.size,
+        detectionSummary
+      });
 
       try {
         const response = await fetch("/api/videos/save", {
@@ -490,15 +553,33 @@ const Detectioncuh = () => {
           body: formData,
         });
 
+        console.log("📡 Upload response status:", response.status);
+
         if (response.ok) {
           const data = await response.json();
-          console.log("✅ Video saved:", data.video);
+          console.log("✅ Video saved successfully:", data);
+          alert("Recording saved successfully!");
         } else {
-          const errorData = await response.json();
-          console.error("❌ Failed to save:", errorData);
+          let errorData;
+          try {
+            errorData = await response.json();
+          } catch (e) {
+            errorData = { error: "Failed to parse error response", status: response.status };
+          }
+          console.error("❌ Failed to save video:", {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData
+          });
+          alert(`Failed to save recording: ${errorData.error || 'Unknown error'}`);
         }
       } catch (error) {
-        console.error("Upload error:", error);
+        console.error("❌ Upload error:", error);
+        console.error("Error details:", {
+          message: error.message,
+          stack: error.stack
+        });
+        alert(`Upload failed: ${error.message}`);
       }
     };
   }
@@ -521,15 +602,13 @@ const Detectioncuh = () => {
     recorderRef.current = null;
   }
 
-  // Show loading while model OR user session loads
-  if (isLoading || loadingUser) {
+  // Show loading only while user session loads (model will load in background)
+  if (loadingUser) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="flex flex-col items-center">
           <div className="animate-spin rounded-full h-14 w-14 border-t-4 border-emerald-400 border-opacity-80 mb-4" />
-          <div className="text-white text-xl">
-            {loadingUser ? 'Loading session...' : 'Loading AI Model...'}
-          </div>
+          <div className="text-white text-xl">Loading session...</div>
           <p className="text-slate-400 text-sm mt-2">This may take a moment...</p>
         </div>
       </div>
@@ -591,10 +670,30 @@ const Detectioncuh = () => {
               <Webcam 
                 ref={webcamRef} 
                 className="rounded-xl w-full max-h-[480px] object-cover" 
-                muted 
+                muted
+                autoPlay
+                playsInline
                 onUserMedia={handleWebcamReady}
+                onUserMediaError={handleWebcamError}
+                videoConstraints={{
+                  facingMode: "user",
+                  width: { ideal: 1280 },
+                  height: { ideal: 720 }
+                }}
+                screenshotFormat="image/jpeg"
               />
               <canvas ref={canvasRef} className="absolute top-0 left-0 right-0 bottom-0 rounded-xl pointer-events-none" />
+              
+              {/* AI Model Loading Overlay */}
+              {isLoading && (
+                <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <div className="flex flex-col items-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-emerald-400 border-opacity-80 mb-3" />
+                    <div className="text-white text-lg">Loading AI Model...</div>
+                    <p className="text-slate-400 text-xs mt-1">Please wait...</p>
+                  </div>
+                </div>
+              )}
             </motion.div>
           </div>
 

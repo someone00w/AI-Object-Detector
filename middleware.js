@@ -8,7 +8,7 @@ export function middleware(request) {
   response.headers.set('X-Frame-Options', 'DENY')
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('Referrer-Policy', 'origin-when-cross-origin')
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  response.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()')
   
   // Only allow HTTPS in production
   if (process.env.NODE_ENV === 'production' && 

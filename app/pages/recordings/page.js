@@ -230,11 +230,11 @@ export default function RecordingsPage() {
                   whileHover={{ y: -3 }}
                   className="rounded-2xl bg-slate-900/70 border border-white/10 shadow-lg overflow-hidden backdrop-blur"
                 >
-                  {/* VIDEO */}
+                  {/* VIDEO - FIX: Use file_url */}
                   <video
                     controls
                     className="w-full bg-black aspect-video"
-                    src={video.file_path}
+                    src={video.file_url || video.file_path}
                   />
 
                   {/* BODY */}
