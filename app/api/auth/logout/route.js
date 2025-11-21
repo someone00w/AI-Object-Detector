@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { validateCsrfMiddleware } from '@/app/lib/csrf'
 
 export async function POST(request) {
-  // CSRF validation
   const csrfValidation = validateCsrfMiddleware(request)
   if (!csrfValidation.valid) {
     return csrfValidation.error
@@ -13,8 +12,14 @@ export async function POST(request) {
     { status: 200 }
   )
 
-  // Clear the token cookie
+  // Clear both token and temp_session cookies
   response.cookies.set('token', '', {
+    httpOnly: true,
+    path: '/',
+    expires: new Date(0)
+  })
+  
+  response.cookies.set('temp_session', '', {
     httpOnly: true,
     path: '/',
     expires: new Date(0)

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { XMarkIcon, UserCircleIcon, VideoCameraIcon, ArrowRightOnRectangleIcon, Cog6ToothIcon, ArrowPathIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
-import { csrfFetch } from '@/app/lib/csrfHelper'
+import { csrfFetch, invalidateCsrfToken } from '@/app/lib/csrfHelper' // Add invalidateCsrfToken
 
 export default function SettingsPanel() {
   const router = useRouter()
@@ -104,6 +104,10 @@ export default function SettingsPanel() {
   const handleLogout = async () => {
     try {
       await csrfFetch('/api/auth/logout', { method: 'POST' })
+      
+      // Clear cached CSRF token after logout
+      invalidateCsrfToken()
+      
       router.push('/')
     } catch (error) {
       console.error('Logout failed:', error)

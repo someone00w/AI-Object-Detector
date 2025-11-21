@@ -17,6 +17,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Clear any stale CSRF tokens when login page loads
+    invalidateCsrfToken()
+    
     if (searchParams.get("registered") === "true") {
       setSuccess("Account created successfully! Please log in.");
     }

@@ -19,7 +19,9 @@ export async function GET(request) {
         acc[key] = value
         return acc
       }, {})
-      sessionId = cookies.token || crypto.randomBytes(16).toString('hex')
+      
+      // Prefer temp_session, fall back to token, or create new
+      sessionId = cookies.temp_session || cookies.token || crypto.randomBytes(16).toString('hex')
     } else {
       // Create temporary session ID for unauthenticated users
       sessionId = crypto.randomBytes(16).toString('hex')
@@ -33,7 +35,7 @@ export async function GET(request) {
       { status: 200 }
     )
     
-    // If no session exists, set a temporary session cookie
+    // Set temp_session cookie if no auth token exists
     if (!cookieHeader || !cookieHeader.includes('token=')) {
       response.cookies.set('temp_session', sessionId, {
         httpOnly: true,

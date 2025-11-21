@@ -33,19 +33,13 @@ export function validateCsrfToken(sessionId, token) {
   return true
 }
 
-/**
- * Middleware to validate CSRF token on state-changing requests (POST, PUT, PATCH, DELETE)
- * Safe methods (GET, HEAD, OPTIONS) are exempt from CSRF validation
- */
 export function validateCsrfMiddleware(request) {
   const method = request.method
   
-  // Skip CSRF validation for safe methods
   if (['GET', 'HEAD', 'OPTIONS'].includes(method)) {
     return { valid: true }
   }
   
-  // Get session ID from cookie
   const cookieHeader = request.headers.get('cookie')
   if (!cookieHeader) {
     return {
@@ -63,7 +57,8 @@ export function validateCsrfMiddleware(request) {
     return acc
   }, {})
   
-  const sessionId = cookies.token // Using JWT token as session ID
+  // Use temp_session OR token as session ID
+  const sessionId = cookies.temp_session || cookies.token
   if (!sessionId) {
     return {
       valid: false,
@@ -74,7 +69,6 @@ export function validateCsrfMiddleware(request) {
     }
   }
   
-  // Get CSRF token from header
   const csrfToken = request.headers.get('x-csrf-token')
   if (!csrfToken) {
     return {
@@ -86,7 +80,6 @@ export function validateCsrfMiddleware(request) {
     }
   }
   
-  // Validate CSRF token
   const isValid = validateCsrfToken(sessionId, csrfToken)
   if (!isValid) {
     return {
