@@ -129,7 +129,7 @@ export default function SettingsPanel() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998]"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-9998"
               style={{ isolation: 'isolate' }}
             />
 
@@ -139,7 +139,7 @@ export default function SettingsPanel() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-full sm:w-96 bg-slate-950 border-l border-slate-800 shadow-2xl z-[9999] flex flex-col"
+              className="fixed top-0 right-0 h-full w-full sm:w-96 bg-slate-950 border-l border-slate-800 shadow-2xl z-9999 flex flex-col"
               style={{ isolation: 'isolate' }}
             >
               {/* Header */}
@@ -160,7 +160,7 @@ export default function SettingsPanel() {
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    className="absolute top-20 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg"
+                    className="absolute top-20 left-1/2 -translate-x-1/2 z-10000 flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg"
                   >
                     <CheckCircleIcon className="w-5 h-5" />
                     <span className="text-sm font-medium">Settings saved!</span>
@@ -181,7 +181,7 @@ export default function SettingsPanel() {
                     <button
                       onClick={() => {
                         setIsOpen(false)
-                        router.push('/pages/settings/account')
+                        router.push('/settings/account')
                       }}
                       className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-emerald-400/40 transition-all text-left"
                     >
@@ -199,7 +199,7 @@ export default function SettingsPanel() {
                     <button
                       onClick={() => {
                         setIsOpen(false)
-                        router.push('/pages/settings/notifications')
+                        router.push('/settings/notifications')
                       }}
                       className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-emerald-400/40 transition-all text-left"
                     >

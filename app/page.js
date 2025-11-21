@@ -7,9 +7,9 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 relative overflow-hidden font-sans">
       {/* Background gradients */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_#1e293b,_#020617_80%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e293b,#020617_80%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(to_bottom_right,rgba(16,185,129,0.1),rgba(56,189,248,0.1))]" />
-      <div className="absolute inset-0 opacity-[0.06] [background-image:linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] [background-size:60px_60px]" />
+      <div className="absolute inset-0 opacity-[0.06] bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-size-[60px_60px]" />
       <div className="absolute top-[8%] left-[10%] w-[300px] h-[300px] bg-emerald-400/10 rounded-full blur-[140px]" />
       <div className="absolute bottom-[10%] right-[10%] w-[350px] h-[350px] bg-cyan-400/10 rounded-full blur-[160px]" />
 
@@ -43,7 +43,7 @@ export default function Home() {
 
             <h1 className="text-6xl sm:text-7xl lg:text-8xl font-bold leading-[1.15] tracking-tight drop-shadow-[0_0_18px_rgba(56,189,248,0.25)]">
               Welcome to{" "}
-              <span className="bg-gradient-to-r from-emerald-400 via-cyan-300 to-sky-500 bg-clip-text text-transparent">
+              <span className="bg-linear-to-r from-emerald-400 via-cyan-300 to-sky-500 bg-clip-text text-transparent">
                 DiddyWatch
               </span>
             </h1>
@@ -55,8 +55,8 @@ export default function Home() {
 
             <div className="flex flex-col sm:flex-row gap-4 sm:items-center pt-2">
               <Link
-                href="/pages/login"
-                className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-sky-500 px-10 py-4 text-lg font-semibold text-slate-950 shadow-[0_0_40px_rgba(45,212,191,0.55)] hover:shadow-[0_0_55px_rgba(56,189,248,0.8)] hover:-translate-y-[3px] active:translate-y-0 transition-all"
+                href="/login"
+                className="inline-flex items-center justify-center rounded-2xl bg-linear-to-r from-emerald-400 via-cyan-400 to-sky-500 px-10 py-4 text-lg font-semibold text-slate-950 shadow-[0_0_40px_rgba(45,212,191,0.55)] hover:shadow-[0_0_55px_rgba(56,189,248,0.8)] hover:-translate-y-[3px] active:translate-y-0 transition-all"
               >
                 🚀 Start Detection
               </Link>
