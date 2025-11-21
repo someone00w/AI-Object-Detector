@@ -36,7 +36,7 @@ export default function RecordingsPage() {
       const sessionResponse = await fetch("/api/auth/session");
       if (!sessionResponse.ok) {
         if (sessionResponse.status === 401) {
-          router.push("/pages/login");
+          router.push("/login");
           return;
         }
         throw new Error("Failed to fetch session");
@@ -47,7 +47,7 @@ export default function RecordingsPage() {
       const videosResponse = await fetch("/api/videos/user");
       if (!videosResponse.ok) {
         if (videosResponse.status === 401) {
-          router.push("/pages/login");
+          router.push("/login");
           return;
         }
         throw new Error("Failed to fetch videos");
@@ -198,7 +198,7 @@ export default function RecordingsPage() {
           </div>
  
           <div className="flex items-center gap-3 mt-4 sm:mt-0">
-            <Link href="/pages/menu">
+            <Link href="/menu">
               <motion.button
                 whileHover={{ scale: 1.05, y: -1 }}
                 whileTap={{ scale: 0.97, y: 0 }}
@@ -288,7 +288,7 @@ export default function RecordingsPage() {
                           )}
                         </div>
  
-                        <div className="flex gap-2 flex-shrink-0">
+                        <div className="flex gap-2 shrink-0">
                           <button
                             onClick={() => handleEditClick(video)}
                             className="p-2 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 transition"
