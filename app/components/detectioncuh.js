@@ -255,26 +255,30 @@ const Detectioncuh = () => {
     ) {
       return;
     }
- 
+
     const video = webcamRef.current.video;
     if (!video.videoWidth || !video.videoHeight) return;
- 
+
     const canvas = canvasRef.current;
+    
+    // Set canvas internal resolution to match video resolution
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
- 
+
     const detectedObjects = await net.detect(video, undefined, 0.6);
     currentDetectionsRef.current = detectedObjects;
- 
+
     const context = canvas.getContext("2d");
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Render predictions at native video resolution
     renderPredictions(detectedObjects, context);
- 
+
     const personDetected = detectedObjects.some((obj) => obj.class === "person");
- 
+
     if (personDetected && !isRecordingRef.current) {
       startRecording(net);
- 
-      // Only send email if user is authenticated
+
       if (userEmail && !emailCooldownRef.current) {
         emailCooldownRef.current = true;
         sendEmailNotification();
@@ -283,7 +287,7 @@ const Detectioncuh = () => {
         }, 15000);
       }
     }
- 
+
     if (isRecordingRef.current) {
       if (personDetected) {
         lastPersonSeenRef.current = Date.now();
@@ -695,10 +699,10 @@ const Detectioncuh = () => {
               AI Object Detection
             </h1>
            
-            <motion.div className="relative flex justify-center items-center border border-slate-800 rounded-2xl p-2 shadow-[0_0_35px_rgba(15,23,42,0.9)] bg-slate-950/80 backdrop-blur-xl w-full h-full">
+            <motion.div className="relative flex justify-center items-center border border-slate-800 rounded-2xl shadow-[0_0_35px_rgba(15,23,42,0.9)] bg-slate-950/80 backdrop-blur-xl w-full overflow-hidden">
               <Webcam
                 ref={webcamRef}
-                className="rounded-xl w-full max-h-[480px] object-cover"
+                className="rounded-2xl w-full max-h-[480px] object-cover"
                 muted
                 autoPlay
                 playsInline
@@ -711,11 +715,20 @@ const Detectioncuh = () => {
                 }}
                 screenshotFormat="image/jpeg"
               />
-              <canvas ref={canvasRef} className="absolute top-0 left-0 right-0 bottom-0 rounded-xl pointer-events-none" />
-             
+              <canvas 
+                ref={canvasRef} 
+                className="absolute inset-0 pointer-events-none rounded-2xl"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  maxHeight: '480px',
+                  objectFit: 'cover'
+                }}
+              />
+ 
               {/* AI Model Loading Overlay */}
               {isLoading && (
-                <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm rounded-2xl flex items-center justify-center">
                   <div className="flex flex-col items-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-emerald-400 border-opacity-80 mb-3" />
                     <div className="text-white text-lg">Loading AI Model...</div>
