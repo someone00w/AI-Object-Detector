@@ -54,7 +54,7 @@ export async function GET(request) {
 
     const isAdmin = currentUser.role === 1;
 
-    // 3) Build where clause - admin sees all, regular user sees only their data
+    // 3) Build where clause
     const whereClause = {
       ...(isAdmin ? {} : { user_id: currentUser.id }),
       ...timeFilter,
@@ -75,6 +75,7 @@ export async function GET(request) {
     for (const video of videos) {
       let det = video.detection_result;
       
+      // Parse JSON string if needed
       if (typeof det === "string") {
         try {
           det = JSON.parse(det);
@@ -83,33 +84,36 @@ export async function GET(request) {
         }
       }
 
+      // Extract totalDetections from your specific format
       let count = 0;
       
-      // Try to count detections the same way as stats route
       if (det && typeof det === "object") {
+        // Your format has totalDetections at top level
         if (typeof det.totalDetections === "number") {
           count = det.totalDetections;
-        } else if (Array.isArray(det.detections)) {
-          count = det.detections.length;
-        } else if (Array.isArray(det.predictions)) {
-          count = det.predictions.length;
+        }
+        // Fallback: if uniquePersons exists, use that
+        else if (typeof det.uniquePersons === "number") {
+          count = det.uniquePersons;
         }
       }
 
-      // Fallback: at least 1 if we know there was some detection_result
-      if (!count && det) count = 1;
-
-      heatmapData.push({
-        timestamp: video.capture_time.toISOString(),
-        value: count,
-      });
+      // Only add to heatmap if there were detections
+      if (count > 0) {
+        heatmapData.push({
+          timestamp: video.capture_time.toISOString(),
+          value: count,
+        });
+      }
     }
+
+    console.log(`✅ Heatmap: ${heatmapData.length} data points`);
 
     return NextResponse.json({
       success: true,
       data: heatmapData,
       range,
-      isAdmin, // Include this so frontend knows context
+      isAdmin,
     });
   } catch (error) {
     console.error("❌ Heatmap error:", error);

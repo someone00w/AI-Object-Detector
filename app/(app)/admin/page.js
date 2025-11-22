@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/app/lib/useAuth'
 import { useEffect, useState } from 'react'
-import { TrashIcon, PencilIcon } from '@heroicons/react/24/outline'
+import { TrashIcon, PencilIcon, KeyIcon } from '@heroicons/react/24/outline'
 import { csrfFetch } from '@/app/lib/csrfHelper'
 
 export default function AdminPage() {
@@ -96,10 +96,10 @@ export default function AdminPage() {
     <div className="px-4 sm:px-6 py-6">
       <div className="w-full max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <header className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
+        <header className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <div className="h-7 w-7 rounded-xl bg-purple-500/10 border border-purple-400/40 flex items-center justify-center shadow-[0_0_14px_rgba(168,85,247,0.7)]">
-              <span className="h-2 w-2 rounded-full bg-purple-400" />
+              <KeyIcon className="w-4 h-4 text-purple-400" />
             </div>
             <div className="flex flex-col">
               <span className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
@@ -110,7 +110,7 @@ export default function AdminPage() {
               </span>
             </div>
           </div>
-          <p className="text-sm text-slate-400 ml-10">
+          <p className="text-sm text-slate-400">
             Logged in as: <span className="font-semibold text-white">{user.username}</span>
           </p>
         </header>

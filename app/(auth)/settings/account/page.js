@@ -4,7 +4,7 @@ import { useAuth } from '@/app/lib/useAuth'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
-import { PencilIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { PencilIcon, CheckIcon, XMarkIcon, UserCircleIcon } from '@heroicons/react/24/outline'
 import SettingsPanel from '@/app/components/SettingsPanel'
 
 export default function AccountPage() {
@@ -88,7 +88,7 @@ export default function AccountPage() {
         <header className="w-full max-w-6xl mx-auto flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="h-7 w-7 rounded-xl bg-blue-500/10 border border-blue-400/40 flex items-center justify-center shadow-[0_0_14px_rgba(59,130,246,0.7)]">
-              <span className="h-2 w-2 rounded-full bg-blue-400" />
+              <UserCircleIcon className="w-5 h-5 text-blue-400" />
             </div>
             <div className="flex flex-col">
               <span className="text-[11px] uppercase tracking-[0.18em] text-slate-400">

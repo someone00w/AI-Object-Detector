@@ -3,14 +3,20 @@ import nodemailer from "nodemailer";
 import { validateCsrfMiddleware } from '@/app/lib/csrf';
 
 export async function POST(req) {
-  // CSRF validation
-  const csrfValidation = validateCsrfMiddleware(req)
-  if (!csrfValidation.valid) {
-    return csrfValidation.error
+  // Check for internal API key first (for server-side calls)
+  const authHeader = req.headers.get('authorization');
+  const isInternalCall = authHeader === `Bearer ${process.env.INTERNAL_API_SECRET}`;
+  
+  // Only validate CSRF for external calls (from browser)
+  if (!isInternalCall) {
+    const csrfValidation = validateCsrfMiddleware(req);
+    if (!csrfValidation.valid) {
+      return csrfValidation.error;
+    }
   }
   
   try {
-    const { to, subject, text } = await req.json();
+    const { to, subject, text, html } = await req.json(); // Added 'html' here
 
     // Validate environment variables
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
@@ -56,7 +62,7 @@ export async function POST(req) {
       to: toEmail,
       subject: subject || "🚨 Person detected by AI system!",
       text: text || "Your AI detection system just detected a person.",
-      html: `
+      html: html || `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
           <h2 style="color: #10b981;">🚨 Person Detected!</h2>
           <p>${text || "Your AI detection system just detected a person."}</p>

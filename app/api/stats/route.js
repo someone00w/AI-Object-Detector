@@ -2,35 +2,42 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { verifyToken } from "@/app/lib/jwt";
 
-// Normalise detection_result into an array of detection objects
-function extractDetections(det) {
-  if (!det) return [];
+// Extract detection count and class info from your specific detection_result format
+function parseDetectionResult(det) {
+  if (!det) return { count: 0, classes: {} };
 
-  // If it's already an array
-  if (Array.isArray(det)) {
-    if (det.length && typeof det[0] === "object") return det;
-    return [];
-  }
-
-  // If it's an object with common keys
-  if (typeof det === "object") {
-    if (Array.isArray(det.detections) && det.detections.length) {
-      return det.detections;
-    }
-    if (Array.isArray(det.predictions) && det.predictions.length) {
-      return det.predictions;
-    }
-
-    // Fallback: first array-of-objects inside
-    for (const key of Object.keys(det)) {
-      const val = det[key];
-      if (Array.isArray(val) && val.length && typeof val[0] === "object") {
-        return val;
-      }
+  // Handle JSON string
+  if (typeof det === "string") {
+    try {
+      det = JSON.parse(det);
+    } catch (err) {
+      return { count: 0, classes: {} };
     }
   }
 
-  return [];
+  // Your format has totalDetections at the top level
+  const count = det.totalDetections || 0;
+  
+  // Extract class counts from perClassFrameCounts or classesSeen
+  const classes = {};
+  
+  if (det.perClassFrameCounts && typeof det.perClassFrameCounts === 'object') {
+    // Use frame counts as detection counts (more accurate)
+    Object.entries(det.perClassFrameCounts).forEach(([className, frameCount]) => {
+      classes[className] = Math.ceil(frameCount / 30); // Approximate detections from frames (assuming 30fps)
+    });
+  } else if (det.classesSeen && Array.isArray(det.classesSeen)) {
+    // Fallback: distribute totalDetections among classes
+    const numClasses = det.classesSeen.length;
+    det.classesSeen.forEach(className => {
+      classes[className] = Math.ceil(count / numClasses);
+    });
+  } else if (count > 0) {
+    // If we have detections but no class info, use "Unknown"
+    classes["Unknown"] = count;
+  }
+
+  return { count, classes };
 }
 
 export async function GET(request) {
@@ -85,12 +92,10 @@ export async function GET(request) {
     const isAdmin = currentUser.role === 1;
 
     // --- 3) Build where clause based on role ---
-    // Admin sees all users' data, regular user sees only their own
     const userFilter = isAdmin ? {} : { user_id: currentUser.id };
 
     // --- 4) Global basics (respecting user filter) ---
     const [totalUsers, totalVideos, storageAgg] = await Promise.all([
-      // Only admins see total user count, regular users see just themselves
       isAdmin ? prisma.user.count() : Promise.resolve(1),
       prisma.video.count({
         where: {
@@ -141,37 +146,25 @@ export async function GET(request) {
 
     let totalDetections = 0;
     const labelCounts = {};
+    let videosWithDetectionData = 0;
 
     for (const video of videosWithDetections) {
-      let det = video.detection_result;
-
-      // handle JSON string
-      if (typeof det === "string") {
-        try {
-          det = JSON.parse(det);
-        } catch (err) {
-          det = null;
-        }
-      }
-
-      const detections = extractDetections(det);
-      totalDetections += detections.length;
-
-      for (const d of detections) {
-        const label =
-          d.class ||
-          d.label ||
-          d.object ||
-          d.name ||
-          d.category ||
-          "Unknown";
-
-        labelCounts[label] = (labelCounts[label] || 0) + 1;
+      const { count, classes } = parseDetectionResult(video.detection_result);
+      
+      if (count > 0) {
+        totalDetections += count;
+        videosWithDetectionData++;
+        
+        // Aggregate class counts
+        Object.entries(classes).forEach(([className, classCount]) => {
+          labelCounts[className] = (labelCounts[className] || 0) + classCount;
+        });
       }
     }
 
-    const denom = videosWithDetections.length || 0;
-    const avgDetectionsPerVideo = denom > 0 ? totalDetections / denom : 0;
+    const avgDetectionsPerVideo = videosWithDetectionData > 0 
+      ? totalDetections / videosWithDetectionData 
+      : 0;
 
     const topLabels = Object.entries(labelCounts)
       .map(([label, count]) => ({ label, count }))
@@ -187,7 +180,7 @@ export async function GET(request) {
       topLabels,
       recentVideos,
       range,
-      isAdmin, // Include this so frontend knows context
+      isAdmin,
     });
   } catch (err) {
     console.error("Error in stats route:", err);

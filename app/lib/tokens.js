@@ -15,11 +15,17 @@ export function generateTokenExpiry() {
 // Send verification email
 export async function sendVerificationEmail(email, verificationLink) {
   try {
-    // Use full URL for server-side fetch
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    console.log('🔍 Attempting to send email to:', email)
+    console.log('🔗 Verification link:', verificationLink)
+    console.log('📧 API endpoint:', `${baseUrl}/api/send-email`)
+    
     const response = await fetch(`${baseUrl}/api/send-email`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.INTERNAL_API_SECRET}` // Add this
+      },
       body: JSON.stringify({
         to: email,
         subject: '✉️ Verify Your Email Address',
@@ -51,9 +57,19 @@ export async function sendVerificationEmail(email, verificationLink) {
         `
       })
     })
-    return response.ok
+    
+    console.log('📬 Email API response status:', response.status)
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('❌ Email API error:', errorData)
+      return false
+    }
+    
+    console.log('✅ Email sent successfully!')
+    return true
   } catch (error) {
-    console.error('Failed to send verification email:', error)
+    console.error('💥 Failed to send verification email:', error)
     return false
   }
 }

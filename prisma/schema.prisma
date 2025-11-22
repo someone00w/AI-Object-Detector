@@ -49,6 +49,8 @@ model EmailRecipient {
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+  @@index([enabled])
+  @@index([user_id, enabled])
   @@map("email_recipients")
 }
 
@@ -67,5 +69,6 @@ model Video {
   @@index([user_id])
   @@index([uploaded_at])
   @@index([capture_time])
+  @@index([user_id, capture_time])
   @@map("videos")
 }
